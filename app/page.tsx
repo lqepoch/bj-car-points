@@ -41,23 +41,22 @@ function calcStepBefore2021(rounds: number): number {
   return 0;
 }
 
-// 2021年后规则：1-6次=1分，7-12次=2分...
+// 2021年后规则：1-2次=1分，3-4次=2分，5-6次=3分...
 function calcStepAfter2021(rounds: number): number {
   if (rounds === 0) return 0;
-  if (rounds >= 1 && rounds <= 6) return 1;
-  if (rounds >= 7 && rounds <= 12) return 2;
-  if (rounds >= 13 && rounds <= 18) return 3;
-  if (rounds >= 19 && rounds <= 24) return 4;
-  if (rounds >= 25 && rounds <= 30) return 5;
-  if (rounds >= 31 && rounds <= 36) return 6;
-  if (rounds >= 37 && rounds <= 42) return 7;
-  if (rounds >= 43 && rounds <= 48) return 8;
-  if (rounds >= 49 && rounds <= 54) return 9;
-  if (rounds >= 55 && rounds <= 60) return 10;
-  if (rounds >= 61 && rounds <= 66) return 11;
-  if (rounds >= 67 && rounds <= 72) return 12;
-  if (rounds >= 73 && rounds <= 78) return 13;
-  return 13 + Math.floor((rounds - 78) / 6);
+  if (rounds >= 1 && rounds <= 2) return 1;
+  if (rounds >= 3 && rounds <= 4) return 2;
+  if (rounds >= 5 && rounds <= 6) return 3;
+  if (rounds >= 7 && rounds <= 8) return 4;
+  if (rounds >= 9 && rounds <= 10) return 5;
+  if (rounds >= 11 && rounds <= 12) return 6;
+  if (rounds >= 13 && rounds <= 14) return 7;
+  if (rounds >= 15 && rounds <= 16) return 8;
+  if (rounds >= 17 && rounds <= 18) return 9;
+  if (rounds >= 19 && rounds <= 20) return 10;
+  if (rounds >= 21 && rounds <= 22) return 11;
+  if (rounds >= 23 && rounds <= 24) return 12;
+  return 13; // 25次及以上都是13分
 }
 
 // 根据开始年份计算总阶梯分（分段计算）

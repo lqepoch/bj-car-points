@@ -323,6 +323,18 @@ export default function Home() {
     // 过滤出已经开始参与的成员（积分>0）
     const activeMembers = detail.filter(d => d.point > 0);
     
+    // 根据已开始参与的成员动态计算代际数
+    const activeMemberNames = activeMembers.map(d => d.name.toLowerCase());
+    const hasParent = activeMemberNames.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
+    const hasChild = activeMemberNames.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
+    
+    let activeGenerations = 1; // 默认1代
+    if (hasParent && hasChild) {
+      activeGenerations = 3; // 三代：父母+自己+子女
+    } else if (hasParent || hasChild) {
+      activeGenerations = 2; // 两代：父母+自己 或 自己+子女
+    }
+    
     const mainPoint = activeMembers.find((d) => d.role === "main")?.point ?? 0;
     const spousePoint = activeMembers.find((d) => d.role === "spouse")?.point ?? 0;
     const othersPoint = activeMembers.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
@@ -332,8 +344,8 @@ export default function Home() {
     
     // 家庭总积分公式
     const total = activeIncludeSpouse
-      ? ((mainPoint + spousePoint) * 2 + othersPoint) * generations
-      : (mainPoint + othersPoint) * generations;
+      ? ((mainPoint + spousePoint) * 2 + othersPoint) * activeGenerations
+      : (mainPoint + othersPoint) * activeGenerations;
 
     return { ok: true, message: "", total, detail };
   }, [visibleMembers, includeSpouse, generations, familyApplyYears]);
@@ -715,6 +727,18 @@ export default function Home() {
                           // 过滤出已经开始参与的成员来计算家庭总积分
                           const activeFutureDetails = futureDetails.filter(d => d.point > 0);
                           
+                          // 根据已开始参与的成员动态计算代际数
+                          const futureMemberNames = activeFutureDetails.map(d => d.name.toLowerCase());
+                          const futureHasParent = futureMemberNames.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
+                          const futureHasChild = futureMemberNames.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
+                          
+                          let futureGenerations = 1;
+                          if (futureHasParent && futureHasChild) {
+                            futureGenerations = 3;
+                          } else if (futureHasParent || futureHasChild) {
+                            futureGenerations = 2;
+                          }
+                          
                           // 计算未来的家庭总积分（只计算已开始参与的成员）
                           const futureMainPoint = activeFutureDetails.find((d) => d.role === "main")?.point ?? 0;
                           const futureSpousePoint = activeFutureDetails.find((d) => d.role === "spouse")?.point ?? 0;
@@ -724,8 +748,8 @@ export default function Home() {
                           const futureIncludeSpouse = activeFutureDetails.some(d => d.role === "spouse");
                           
                           const futureTotal = futureIncludeSpouse
-                            ? ((futureMainPoint + futureSpousePoint) * 2 + futureOthersPoint) * generations
-                            : (futureMainPoint + futureOthersPoint) * generations;
+                            ? ((futureMainPoint + futureSpousePoint) * 2 + futureOthersPoint) * futureGenerations
+                            : (futureMainPoint + futureOthersPoint) * futureGenerations;
                           
                           // 计算较上年增加（第一年显示为"-"）
                           let increase = '-';
@@ -769,6 +793,18 @@ export default function Home() {
                             
                             const activePrevDetails = prevDetails.filter(d => d.point > 0);
                             
+                            // 根据上一年已开始参与的成员动态计算代际数
+                            const prevMemberNames = activePrevDetails.map(d => d.name.toLowerCase());
+                            const prevHasParent = prevMemberNames.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
+                            const prevHasChild = prevMemberNames.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
+                            
+                            let prevGenerations = 1;
+                            if (prevHasParent && prevHasChild) {
+                              prevGenerations = 3;
+                            } else if (prevHasParent || prevHasChild) {
+                              prevGenerations = 2;
+                            }
+                            
                             const prevMainPoint = activePrevDetails.find((d) => d.role === "main")?.point ?? 0;
                             const prevSpousePoint = activePrevDetails.find((d) => d.role === "spouse")?.point ?? 0;
                             const prevOthersPoint = activePrevDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
@@ -776,8 +812,8 @@ export default function Home() {
                             const prevIncludeSpouse = activePrevDetails.some(d => d.role === "spouse");
                             
                             const prevTotal = prevIncludeSpouse
-                              ? ((prevMainPoint + prevSpousePoint) * 2 + prevOthersPoint) * generations
-                              : (prevMainPoint + prevOthersPoint) * generations;
+                              ? ((prevMainPoint + prevSpousePoint) * 2 + prevOthersPoint) * prevGenerations
+                              : (prevMainPoint + prevOthersPoint) * prevGenerations;
                             
                             increase = `+${futureTotal - prevTotal}`;
                           }

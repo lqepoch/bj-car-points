@@ -492,6 +492,21 @@ export default function Home() {
                 <button type="button" onClick={() => addMember("其他成员")}>👤 添加其他</button>
               </div>
 
+              <div style={{ marginTop: '20px', padding: '16px', background: '#e0f2fe', borderRadius: '12px', border: '2px solid #0284c7' }}>
+                <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+                  <span style={{ fontSize: '24px', flexShrink: 0 }}>💡</span>
+                  <div>
+                    <strong style={{ color: '#0c4a6e', fontSize: '16px' }}>申请策略说明</strong>
+                    <p style={{ margin: '8px 0 0 0', fontSize: '14px', lineHeight: '1.6', color: '#0c4a6e' }}>
+                      <strong>推荐策略：</strong>选择"新能源指标或普通指标"（两者都选）<br />
+                      • 5月先参加新能源配置（按积分排序），未入围自动转入普通摇号池<br />
+                      • <strong>普通摇号阶梯分和新能源轮候年限分同时累积</strong>，互不影响<br />
+                      • 一旦开始轮候新能源，建议持续选择此策略，避免轮候时间中断
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div style={{ marginTop: '20px', padding: '16px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
                 <label style={{ display: 'block' }}>
                   <strong>📆 家庭申请开始年份</strong>

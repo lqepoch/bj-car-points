@@ -661,8 +661,19 @@ export default function Home() {
                             const member = visibleMembers.find(m => m.id === d.id);
                             if (!member) return { ...d, point: d.point };
                             
+                            // 判断成员在该年份是否已经开始参与
+                            // 如果普通摇号和新能源轮候都没开始，则该成员不计入
+                            const ordinaryStarted = member.ordinaryStartYear && member.ordinaryStartYear <= futureYear;
+                            const queueStarted = member.queueStartYear && member.queueStartYear <= futureYear;
+                            const memberStarted = ordinaryStarted || queueStarted;
+                            
+                            // 如果成员还没开始参与，返回0分（但保留基础信息）
+                            if (!memberStarted) {
+                              return { ...d, point: 0, ordinaryStep: 0, queueStep: 0, stageTotal: 0, familyYears: 0 };
+                            }
+                            
                             // 计算未来的普通摇号阶梯分
-                            let futureOrdinaryStep = d.ordinaryStep;
+                            let futureOrdinaryStep = 0;
                             if (member.ordinaryStartYear) {
                               const futureData = calcTotalStepByYearAndHalf(
                                 member.ordinaryStartYear,
@@ -673,7 +684,7 @@ export default function Home() {
                             }
                             
                             // 计算未来的新能源轮候分
-                            let futureQueueStep = d.queueStep;
+                            let futureQueueStep = 0;
                             if (member.queueStartYear) {
                               futureQueueStep = calcQueueYears(member.queueStartYear, futureYear);
                             }
@@ -687,12 +698,18 @@ export default function Home() {
                             return { ...d, point: futurePoint };
                           });
                           
-                          // 计算未来的家庭总积分
-                          const futureMainPoint = futureDetails.find((d) => d.role === "main")?.point ?? 0;
-                          const futureSpousePoint = futureDetails.find((d) => d.role === "spouse")?.point ?? 0;
-                          const futureOthersPoint = futureDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+                          // 过滤出已经开始参与的成员来计算家庭总积分
+                          const activeFutureDetails = futureDetails.filter(d => d.point > 0);
                           
-                          const futureTotal = includeSpouse
+                          // 计算未来的家庭总积分（只计算已开始参与的成员）
+                          const futureMainPoint = activeFutureDetails.find((d) => d.role === "main")?.point ?? 0;
+                          const futureSpousePoint = activeFutureDetails.find((d) => d.role === "spouse")?.point ?? 0;
+                          const futureOthersPoint = activeFutureDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+                          
+                          // 判断是否包含配偶（且配偶已开始参与）
+                          const futureIncludeSpouse = activeFutureDetails.some(d => d.role === "spouse");
+                          
+                          const futureTotal = futureIncludeSpouse
                             ? ((futureMainPoint + futureSpousePoint) * 2 + futureOthersPoint) * generations
                             : (futureMainPoint + futureOthersPoint) * generations;
                           
@@ -705,6 +722,15 @@ export default function Home() {
                             const prevDetails = result.detail.map((d) => {
                               const member = visibleMembers.find(m => m.id === d.id);
                               if (!member) return { ...d, point: d.point };
+                              
+                              // 判断成员在上一年是否已经开始参与
+                              const ordinaryStarted = member.ordinaryStartYear && member.ordinaryStartYear <= prevYear;
+                              const queueStarted = member.queueStartYear && member.queueStartYear <= prevYear;
+                              const memberStarted = ordinaryStarted || queueStarted;
+                              
+                              if (!memberStarted) {
+                                return { ...d, point: 0 };
+                              }
                               
                               let prevOrdinaryStep = 0;
                               if (member.ordinaryStartYear) {
@@ -727,11 +753,15 @@ export default function Home() {
                               return { ...d, point: prevPoint };
                             });
                             
-                            const prevMainPoint = prevDetails.find((d) => d.role === "main")?.point ?? 0;
-                            const prevSpousePoint = prevDetails.find((d) => d.role === "spouse")?.point ?? 0;
-                            const prevOthersPoint = prevDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+                            const activePrevDetails = prevDetails.filter(d => d.point > 0);
                             
-                            const prevTotal = includeSpouse
+                            const prevMainPoint = activePrevDetails.find((d) => d.role === "main")?.point ?? 0;
+                            const prevSpousePoint = activePrevDetails.find((d) => d.role === "spouse")?.point ?? 0;
+                            const prevOthersPoint = activePrevDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+                            
+                            const prevIncludeSpouse = activePrevDetails.some(d => d.role === "spouse");
+                            
+                            const prevTotal = prevIncludeSpouse
                               ? ((prevMainPoint + prevSpousePoint) * 2 + prevOthersPoint) * generations
                               : (prevMainPoint + prevOthersPoint) * generations;
                             

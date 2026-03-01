@@ -274,6 +274,11 @@ export default function Home() {
       // 基础分
       const base = m.role === "main" ? 2 : 1;
       
+      // 判断成员在当前年份是否已经开始参与
+      const ordinaryStarted = m.ordinaryStartYear && m.ordinaryStartYear <= nowYear;
+      const queueStarted = m.queueStartYear && m.queueStartYear <= nowYear;
+      const memberStarted = ordinaryStarted || queueStarted;
+      
       // 计算普通摇号阶梯分（分段计算）
       const ordinaryData = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
       
@@ -289,8 +294,11 @@ export default function Home() {
       // 阶梯（轮候）积分 = 普通阶梯 + C5加分 + 新能源轮候
       const stageTotal = ordinaryData.totalStep + c5Extra + queueStep;
       
+      // 家庭申请年限分：只有已经开始参与的成员才能获得
+      const memberFamilyYears = memberStarted ? familyApplyYears : 0;
+      
       // 个人积分 = 基础分 + 阶梯（轮候）积分 + 家庭申请年限分
-      const point = base + stageTotal + familyApplyYears;
+      const point = memberStarted ? (base + stageTotal + memberFamilyYears) : 0;
 
       return {
         id: m.id,
@@ -307,17 +315,23 @@ export default function Home() {
         queueYears,
         queueStep,
         stageTotal,
-        familyYears: familyApplyYears,
+        familyYears: memberFamilyYears,
         point,
       };
     });
 
-    const mainPoint = detail.find((d) => d.role === "main")?.point ?? 0;
-    const spousePoint = detail.find((d) => d.role === "spouse")?.point ?? 0;
-    const othersPoint = detail.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+    // 过滤出已经开始参与的成员（积分>0）
+    const activeMembers = detail.filter(d => d.point > 0);
+    
+    const mainPoint = activeMembers.find((d) => d.role === "main")?.point ?? 0;
+    const spousePoint = activeMembers.find((d) => d.role === "spouse")?.point ?? 0;
+    const othersPoint = activeMembers.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
 
+    // 判断是否包含配偶（且配偶已开始参与）
+    const activeIncludeSpouse = activeMembers.some(d => d.role === "spouse");
+    
     // 家庭总积分公式
-    const total = includeSpouse
+    const total = activeIncludeSpouse
       ? ((mainPoint + spousePoint) * 2 + othersPoint) * generations
       : (mainPoint + othersPoint) * generations;
 

@@ -954,10 +954,12 @@ button.danger:hover:not(:disabled) {
 @media (max-width: 920px) {
   .workbench {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .workbench-side {
     position: static;
+    order: -1; /* 移动端时显示在上方 */
   }
 
   .stepper {
@@ -967,24 +969,198 @@ button.danger:hover:not(:disabled) {
 
 @media (max-width: 640px) {
   .container {
-    padding: 20px 16px 60px;
+    padding: 16px 12px 60px;
   }
 
   .card {
-    padding: 20px;
+    padding: 16px;
+    margin-top: 8px;
   }
 
   .hero {
     flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 16px !important;
+  }
+
+  .hero-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .progress-indicator {
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .progress-step {
+    padding: 3px 8px;
+    font-size: 11px;
   }
 
   .score {
-    font-size: 48px;
+    font-size: 42px;
+  }
+
+  .score-display {
+    padding: 24px 16px;
+    margin-bottom: 20px;
   }
 
   .grid.three,
   .grid.four {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .member {
+    padding: 12px;
+  }
+
+  .member-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .member-head > div {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .actions button {
+    width: 100%;
+  }
+
+  .nav {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .nav button {
+    width: 100%;
+    max-width: none;
+  }
+
+  .detail-cards {
+    gap: 8px;
+  }
+
+  .detail-card {
+    padding: 12px;
+  }
+
+  .detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .detail-point {
+    font-size: 18px;
+  }
+
+  .formula-box {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .formula {
+    font-size: 13px;
+    word-break: break-all;
+  }
+
+  .theme-toggle {
+    gap: 2px;
+    padding: 2px;
+  }
+
+  .theme-toggle button {
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  /* 修复表单元素在移动端的显示 */
+  input[type="text"],
+  input[type="number"],
+  select {
+    font-size: 16px; /* 防止iOS缩放 */
+    padding: 12px;
+  }
+
+  label {
+    font-size: 14px;
+  }
+
+  .hint {
+    font-size: 11px;
+    line-height: 1.3;
+  }
+
+  /* 优化按钮在移动端的显示 */
+  button {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px; /* iOS推荐的最小触摸目标 */
+  }
+
+  button.small {
+    padding: 8px 12px;
+    font-size: 12px;
+    min-height: 36px;
+  }
+
+  /* 修复成员卡片在移动端的布局 */
+  .member-score-preview {
+    margin-top: 12px;
+    padding: 10px;
+  }
+
+  .score-breakdown {
+    gap: 6px;
+  }
+
+  .score-item {
+    font-size: 11px;
+  }
+
+  /* 优化政策说明框 */
+  .policy-list {
+    padding-left: 16px;
+    gap: 8px;
+  }
+
+  .policy-list li {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* 修复预览区域 */
+  .preview-score {
+    font-size: 36px;
+    margin: 16px 0;
+  }
+
+  .preview-detail {
+    margin: 12px 0;
+    gap: 6px;
+  }
+
+  .preview-item {
+    padding: 8px 0;
+    font-size: 13px;
   }
 }
 /* 错误提示样式 */
@@ -1349,5 +1525,227 @@ button.save-button {
   
   .history-item {
     border-width: 2px;
+  }
+}
+/* 修复移动端特定的布局问题 */
+@media (max-width: 480px) {
+  .container {
+    padding: 12px 8px 50px;
+  }
+
+  .card {
+    padding: 12px;
+    border-radius: 12px;
+  }
+
+  .hero {
+    padding: 10px 12px !important;
+  }
+
+  .hero h1 {
+    font-size: 16px;
+    line-height: 1.2;
+  }
+
+  .hero .muted {
+    font-size: 12px;
+  }
+
+  /* 修复表单布局 */
+  .grid.four {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .member {
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .member-head strong {
+    font-size: 13px;
+  }
+
+  .role-badge {
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+
+  /* 优化按钮组 */
+  .actions {
+    gap: 6px;
+  }
+
+  .actions button {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  /* 修复导航按钮 */
+  .nav {
+    padding: 12px;
+    gap: 8px;
+  }
+
+  .nav button {
+    padding: 12px;
+    font-size: 13px;
+  }
+
+  /* 优化积分显示 */
+  .score-display {
+    padding: 20px 12px;
+    margin-bottom: 16px;
+  }
+
+  .score {
+    font-size: 36px;
+  }
+
+  .score-label {
+    font-size: 12px;
+  }
+
+  .score-unit {
+    font-size: 16px;
+  }
+
+  /* 修复详情卡片 */
+  .detail-card {
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  .breakdown-item {
+    font-size: 12px;
+  }
+
+  .breakdown-item.sub {
+    font-size: 11px;
+    padding-left: 12px;
+  }
+
+  /* 优化侧边栏在移动端的显示 */
+  .workbench-side {
+    padding: 12px;
+  }
+
+  .preview-score {
+    font-size: 28px;
+    margin: 12px 0;
+  }
+
+  .policy-list li {
+    font-size: 11px;
+  }
+
+  .policy-link {
+    padding: 10px;
+    font-size: 12px;
+    margin-top: 12px;
+  }
+}
+
+/* 修复横屏模式 */
+@media (max-width: 920px) and (orientation: landscape) {
+  .workbench {
+    grid-template-columns: 1fr 280px;
+  }
+
+  .workbench-side {
+    position: sticky;
+    top: 16px;
+    order: 0;
+  }
+}
+
+/* 修复超小屏幕 */
+@media (max-width: 360px) {
+  .container {
+    padding: 8px 4px 40px;
+  }
+
+  .card {
+    padding: 8px;
+    margin-top: 6px;
+  }
+
+  .hero {
+    padding: 8px 10px !important;
+  }
+
+  .theme-toggle button {
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  .progress-step {
+    padding: 2px 6px;
+    font-size: 10px;
+  }
+
+  .member {
+    padding: 8px;
+  }
+
+  .score {
+    font-size: 32px;
+  }
+}
+
+/* 修复触摸设备的交互 */
+@media (hover: none) and (pointer: coarse) {
+  .card:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+
+  .member:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+
+  .detail-card:hover {
+    transform: none;
+    box-shadow: var(--shadow-md);
+  }
+
+  .history-item:hover {
+    transform: none;
+    box-shadow: var(--shadow-sm);
+  }
+
+  button:hover:not(:disabled) {
+    transform: none;
+  }
+
+  .policy-link:hover {
+    transform: none;
+  }
+}
+
+/* 修复iOS Safari的特殊问题 */
+@supports (-webkit-touch-callout: none) {
+  input[type="text"],
+  input[type="number"],
+  select {
+    -webkit-appearance: none;
+    border-radius: 8px;
+  }
+
+  button {
+    -webkit-appearance: none;
+    border-radius: 8px;
+  }
+}
+
+/* 确保内容不会被虚拟键盘遮挡 */
+@media (max-height: 600px) {
+  .container {
+    padding-bottom: 20px;
+  }
+
+  .modal-content {
+    max-height: 80vh;
   }
 }

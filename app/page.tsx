@@ -18,7 +18,7 @@ type Theme = "light" | "dark" | "auto";
 function getYearOptions(): number[] {
   const currentYear = new Date().getFullYear();
   const years = [];
-  for (let year = 2011; year <= currentYear; year++) {
+  for (let year = 2011; year <= currentYear + 10; year++) {
     years.push(year);
   }
   return years;
@@ -27,7 +27,7 @@ function getYearOptions(): number[] {
 function getFutureYearOptions(): number[] {
   const currentYear = new Date().getFullYear();
   const years = [];
-  for (let year = 2011; year <= currentYear + 1; year++) {
+  for (let year = 2011; year <= currentYear + 10; year++) {
     years.push(year);
   }
   return years;

@@ -24,7 +24,7 @@ export function validateMember(member: Member): ValidationError[] {
     });
   }
 
-  // 验证普通摇号开始年份
+  // 验证普通摇号开始年份（允许未来10年用于预测）
   if (member.ordinaryStartYear !== null) {
     if (member.ordinaryStartYear < 2011) {
       errors.push({
@@ -32,15 +32,15 @@ export function validateMember(member: Member): ValidationError[] {
         message: '摇号最早从2011年开始'
       });
     }
-    if (member.ordinaryStartYear > currentYear) {
+    if (member.ordinaryStartYear > currentYear + 10) {
       errors.push({
         field: 'ordinaryStartYear',
-        message: '摇号开始年份不能超过当前年份'
+        message: '预测年份不能超过未来10年'
       });
     }
   }
 
-  // 验证新能源轮候开始年份
+  // 验证新能源轮候开始年份（允许未来10年用于预测）
   if (member.queueStartYear !== null) {
     if (member.queueStartYear < 2014) {
       errors.push({
@@ -48,10 +48,10 @@ export function validateMember(member: Member): ValidationError[] {
         message: '新能源轮候最早从2014年开始'
       });
     }
-    if (member.queueStartYear > currentYear) {
+    if (member.queueStartYear > currentYear + 10) {
       errors.push({
         field: 'queueStartYear',
-        message: '轮候开始年份不能超过当前年份'
+        message: '预测年份不能超过未来10年'
       });
     }
   }
@@ -88,10 +88,10 @@ export function validateFamilyApplyYear(year: number | null): ValidationError[] 
         message: '家庭申请最早从2011年开始'
       });
     }
-    if (year > currentYear) {
+    if (year > currentYear + 10) {
       errors.push({
         field: 'familyApplyStartYear',
-        message: '家庭申请开始年份不能超过当前年份'
+        message: '预测年份不能超过未来10年'
       });
     }
   }

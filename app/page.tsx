@@ -526,7 +526,9 @@ export default function Home() {
                   <h3>未来5年积分预测</h3>
                   <div className="prediction-box">
                     <p className="muted small" style={{ marginBottom: '16px' }}>
-                      基于当前规则，假设所有成员继续参与摇号/轮候，预测未来5年家庭总积分变化
+                      基于当前规则，假设所有成员继续参与摇号/轮候，预测未来5年家庭总积分变化。
+                      <br />
+                      <strong>说明：</strong>每年增加的积分包括：①普通摇号每年2次=+1阶梯分 ②家庭申请年限+1年=所有成员各+1分
                     </p>
                     <table className="policy-table">
                       <thead>

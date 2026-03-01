@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type MemberRole = "main" | "spouse" | "other";
 type Half = "first" | "second"; // 上半年/下半年
+type Theme = "light" | "dark" | "auto";
 
 type Member = {
   id: number;
@@ -17,6 +18,43 @@ type Member = {
 
 const nowYear = new Date().getFullYear();
 const START_YEAR = 2011; // 北京摇号开始年份
+
+// Theme hook
+function useTheme() {
+  const [theme, setTheme] = useState<Theme>("auto");
+
+  useEffect(() => {
+    // Load saved theme
+    const saved = localStorage.getItem("theme") as Theme;
+    if (saved) {
+      setTheme(saved);
+    }
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    if (theme === "auto") {
+      // Follow system preference
+      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const updateTheme = () => {
+        root.setAttribute("data-theme", mediaQuery.matches ? "dark" : "light");
+      };
+      updateTheme();
+      mediaQuery.addEventListener("change", updateTheme);
+      return () => mediaQuery.removeEventListener("change", updateTheme);
+    } else {
+      root.setAttribute("data-theme", theme);
+    }
+  }, [theme]);
+
+  const changeTheme = (newTheme: Theme) => {
+    setTheme(newTheme);
+    localStorage.setItem("theme", newTheme);
+  };
+
+  return { theme, changeTheme };
+}
 
 // 获取当前是上半年还是下半年（基于摇号日期）
 function getCurrentHalf(): Half {
@@ -183,6 +221,7 @@ export default function Home() {
     createMember(1, "main", "主申请人"),
     createMember(2, "spouse", "配偶"),
   ]);
+  const { theme, changeTheme } = useTheme();
 
   const visibleMembers = useMemo(
     () => members,
@@ -287,13 +326,38 @@ export default function Home() {
     <main className="container">
       {/* 头部 */}
       <div className="hero card">
-        <div>
+        <div className="hero-content">
           <h1>北京小客车家庭积分计算器</h1>
           <p className="muted">
             基于官方政策规则自动计算家庭总积分，帮助您了解申请资格和中签概率
           </p>
         </div>
-        <span className="badge">官方规则</span>
+        <div className="hero-actions">
+          <div className="theme-toggle">
+            <button
+              className={theme === "light" ? "active" : ""}
+              onClick={() => changeTheme("light")}
+              title="浅色模式"
+            >
+              ☀️
+            </button>
+            <button
+              className={theme === "auto" ? "active" : ""}
+              onClick={() => changeTheme("auto")}
+              title="跟随系统"
+            >
+              AUTO
+            </button>
+            <button
+              className={theme === "dark" ? "active" : ""}
+              onClick={() => changeTheme("dark")}
+              title="深色模式"
+            >
+              🌙
+            </button>
+          </div>
+          <span className="badge">官方规则</span>
+        </div>
       </div>
 
       {/* 步骤指示器 */}

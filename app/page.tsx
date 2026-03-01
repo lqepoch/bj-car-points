@@ -41,22 +41,11 @@ function calcStepBefore2021(rounds: number): number {
   return 0;
 }
 
-// 2021年后规则：1-2次=1分，3-4次=2分，5-6次=3分...
+// 2021年后规则：1-2次=1分，3-4次=2分，5-6次=3分...（每2次+1分，上不封顶）
 function calcStepAfter2021(rounds: number): number {
   if (rounds === 0) return 0;
-  if (rounds >= 1 && rounds <= 2) return 1;
-  if (rounds >= 3 && rounds <= 4) return 2;
-  if (rounds >= 5 && rounds <= 6) return 3;
-  if (rounds >= 7 && rounds <= 8) return 4;
-  if (rounds >= 9 && rounds <= 10) return 5;
-  if (rounds >= 11 && rounds <= 12) return 6;
-  if (rounds >= 13 && rounds <= 14) return 7;
-  if (rounds >= 15 && rounds <= 16) return 8;
-  if (rounds >= 17 && rounds <= 18) return 9;
-  if (rounds >= 19 && rounds <= 20) return 10;
-  if (rounds >= 21 && rounds <= 22) return 11;
-  if (rounds >= 23 && rounds <= 24) return 12;
-  return 13; // 25次及以上都是13分
+  // 每2次增加1分，向上取整
+  return Math.ceil(rounds / 2);
 }
 
 // 根据开始年份计算总阶梯分（分段计算）

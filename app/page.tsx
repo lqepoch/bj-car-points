@@ -591,110 +591,70 @@ export default function Home() {
         
         <div className="rule-section">
           <h3>普通摇号阶梯分对照表</h3>
-          <div className="table-wrap">
-            <table className="policy-table">
-              <thead>
-                <tr>
-                  <th colSpan={2}>2020年12月31日前规则</th>
-                  <th colSpan={2}>2021年1月1日后规则</th>
-                </tr>
-                <tr>
-                  <th>累计次数</th>
-                  <th>阶梯分</th>
-                  <th>累计次数</th>
-                  <th>阶梯分</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>0次</td>
-                  <td>0分</td>
-                  <td>0次</td>
-                  <td>0分</td>
-                </tr>
-                <tr>
-                  <td>1-6次</td>
-                  <td>1分</td>
-                  <td>1-2次</td>
-                  <td>1分</td>
-                </tr>
-                <tr>
-                  <td>7-12次</td>
-                  <td>2分</td>
-                  <td>3-4次</td>
-                  <td>2分</td>
-                </tr>
-                <tr>
-                  <td>13-18次</td>
-                  <td>3分</td>
-                  <td>5-6次</td>
-                  <td>3分</td>
-                </tr>
-                <tr>
-                  <td>19-24次</td>
-                  <td>4分</td>
-                  <td>7-8次</td>
-                  <td>4分</td>
-                </tr>
-                <tr>
-                  <td>25-30次</td>
-                  <td>5分</td>
-                  <td>9-10次</td>
-                  <td>5分</td>
-                </tr>
-                <tr>
-                  <td>31-36次</td>
-                  <td>6分</td>
-                  <td>11-12次</td>
-                  <td>6分</td>
-                </tr>
-                <tr>
-                  <td>37-42次</td>
-                  <td>7分</td>
-                  <td>13-14次</td>
-                  <td>7分</td>
-                </tr>
-                <tr>
-                  <td>43-48次</td>
-                  <td>8分</td>
-                  <td>15-16次</td>
-                  <td>8分</td>
-                </tr>
-                <tr>
-                  <td>49-54次</td>
-                  <td>9分</td>
-                  <td>17-18次</td>
-                  <td>9分</td>
-                </tr>
-                <tr>
-                  <td>55-60次</td>
-                  <td>10分</td>
-                  <td>19-20次</td>
-                  <td>10分</td>
-                </tr>
-                <tr>
-                  <td>61-66次</td>
-                  <td>11分</td>
-                  <td>21-22次</td>
-                  <td>11分</td>
-                </tr>
-                <tr>
-                  <td>67-72次</td>
-                  <td>12分</td>
-                  <td>23-24次</td>
-                  <td>12分</td>
-                </tr>
-                <tr>
-                  <td>73-78次</td>
-                  <td>13分</td>
-                  <td>25次及以上</td>
-                  <td>每2次+1分（上不封顶）</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="table-wrap" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+            <div>
+              <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>2020年12月31日前规则</h4>
+              <table className="policy-table">
+                <thead>
+                  <tr>
+                    <th>累计次数</th>
+                    <th>阶梯分</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>0次</td><td>0分</td></tr>
+                  <tr><td>1-6次</td><td>1分</td></tr>
+                  <tr><td>7-12次</td><td>2分</td></tr>
+                  <tr><td>13-18次</td><td>3分</td></tr>
+                  <tr><td>19-24次</td><td>4分</td></tr>
+                  <tr><td>25-30次</td><td>5分</td></tr>
+                  <tr><td>31-36次</td><td>6分</td></tr>
+                  <tr><td>37-42次</td><td>7分</td></tr>
+                  <tr><td>43-48次</td><td>8分</td></tr>
+                  <tr><td>49-54次</td><td>9分</td></tr>
+                  <tr><td>55-60次</td><td>10分</td></tr>
+                  <tr><td>61-66次</td><td>11分</td></tr>
+                  <tr><td>67-72次</td><td>12分</td></tr>
+                  <tr><td>73-78次</td><td>13分</td></tr>
+                </tbody>
+              </table>
+              <p className="muted small" style={{ marginTop: 8 }}>
+                截至2020年12月31日，共进行摇号78次
+              </p>
+            </div>
+            <div>
+              <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>2021年1月1日后规则</h4>
+              <table className="policy-table">
+                <thead>
+                  <tr>
+                    <th>累计次数</th>
+                    <th>阶梯分</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>0次</td><td>0分</td></tr>
+                  <tr><td>1-2次</td><td>1分</td></tr>
+                  <tr><td>3-4次</td><td>2分</td></tr>
+                  <tr><td>5-6次</td><td>3分</td></tr>
+                  <tr><td>7-8次</td><td>4分</td></tr>
+                  <tr><td>9-10次</td><td>5分</td></tr>
+                  <tr><td>11-12次</td><td>6分</td></tr>
+                  <tr><td>13-14次</td><td>7分</td></tr>
+                  <tr><td>15-16次</td><td>8分</td></tr>
+                  <tr><td>17-18次</td><td>9分</td></tr>
+                  <tr><td>19-20次</td><td>10分</td></tr>
+                  <tr><td>21-22次</td><td>11分</td></tr>
+                  <tr><td>23-24次</td><td>12分</td></tr>
+                  <tr><td>25次及以上</td><td>每2次+1分（上不封顶）</td></tr>
+                </tbody>
+              </table>
+              <p className="muted small" style={{ marginTop: 8 }}>
+                每2次摇号增加1分，持续累加
+              </p>
+            </div>
           </div>
           <p className="muted small" style={{ marginTop: 12 }}>
-            说明：每年2次摇号（6月26日和12月26日）。2025年下半年到2026年3月1日，只参加了1次（2025年12月26日）。
+            说明：每年2次摇号（6月26日和12月26日）。例如2025年下半年到2026年3月1日，只参加了1次（2025年12月26日）。
           </p>
         </div>
 

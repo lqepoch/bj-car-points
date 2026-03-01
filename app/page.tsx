@@ -644,9 +644,17 @@ export default function Home() {
                         </tr>
                       </thead>
                       <tbody>
-                        {[0, 1, 2, 3, 4, 5].map((yearOffset) => {
-                          const futureYear = nowYear + yearOffset;
-                          const futureFamilyYears = familyApplyYears + yearOffset;
+                        {(() => {
+                          // 找到所有成员中最早的开始年份（普通摇号或新能源轮候）
+                          const allStartYears = visibleMembers.flatMap(m => [m.ordinaryStartYear, m.queueStartYear].filter(y => y !== null)) as number[];
+                          const earliestStartYear = allStartYears.length > 0 ? Math.min(...allStartYears) : nowYear;
+                          
+                          // 预测起始年份：取最早开始年份和当前年份中较大的那个
+                          const predictionStartYear = Math.max(earliestStartYear, nowYear);
+                          
+                          return [0, 1, 2, 3, 4, 5].map((yearOffset) => {
+                          const futureYear = predictionStartYear + yearOffset;
+                          const futureFamilyYears = familyApplyStartYear ? Math.max(0, futureYear - familyApplyStartYear) : 0;
                           
                           // 计算每个成员未来的积分
                           const futureDetails = result.detail.map((d) => {
@@ -691,14 +699,14 @@ export default function Home() {
                           // 计算较上年增加（第一年显示为"-"）
                           let increase = '-';
                           if (yearOffset > 0) {
-                            const prevYear = nowYear + yearOffset - 1;
-                            const prevFamilyYears = familyApplyYears + yearOffset - 1;
+                            const prevYear = predictionStartYear + yearOffset - 1;
+                            const prevFamilyYears = familyApplyStartYear ? Math.max(0, prevYear - familyApplyStartYear) : 0;
                             
                             const prevDetails = result.detail.map((d) => {
                               const member = visibleMembers.find(m => m.id === d.id);
                               if (!member) return { ...d, point: d.point };
                               
-                              let prevOrdinaryStep = d.ordinaryStep;
+                              let prevOrdinaryStep = 0;
                               if (member.ordinaryStartYear) {
                                 const prevData = calcTotalStepByYearAndHalf(
                                   member.ordinaryStartYear,
@@ -708,7 +716,7 @@ export default function Home() {
                                 prevOrdinaryStep = prevData.totalStep;
                               }
                               
-                              let prevQueueStep = d.queueStep;
+                              let prevQueueStep = 0;
                               if (member.queueStartYear) {
                                 prevQueueStep = calcQueueYears(member.queueStartYear, prevYear);
                               }
@@ -731,8 +739,8 @@ export default function Home() {
                           }
                           
                           return (
-                            <tr key={yearOffset} style={{ background: yearOffset === 0 ? '#f0f9ff' : 'transparent' }}>
-                              <td>{futureYear}年{yearOffset === 0 ? '（当前）' : ''}</td>
+                            <tr key={yearOffset} style={{ background: yearOffset === 0 && futureYear === nowYear ? '#f0f9ff' : 'transparent' }}>
+                              <td>{futureYear}年{yearOffset === 0 && futureYear === nowYear ? '（当前）' : ''}</td>
                               <td>{futureFamilyYears}年</td>
                               {futureDetails.map((d) => (
                                 <td key={d.id}>{d.point}分</td>
@@ -741,7 +749,8 @@ export default function Home() {
                               <td>{increase}</td>
                             </tr>
                           );
-                        })}
+                        });
+                        })()}
                       </tbody>
                     </table>
                     <div style={{ marginTop: '12px', padding: '12px', background: '#fffbeb', borderRadius: '8px' }}>

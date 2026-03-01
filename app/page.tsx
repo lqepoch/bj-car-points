@@ -201,10 +201,19 @@ function calcQueueYears(startYear: number | null, currentYear: number): number {
   return currentYear - startYear;
 }
 
-// 生成年份选项
+// 生成年份选项（从2011年到当前年份）
 function getYearOptions(): number[] {
   const years: number[] = [];
   for (let year = START_YEAR; year <= nowYear; year++) {
+    years.push(year);
+  }
+  return years;
+}
+
+// 生成未来年份选项（包含未来5年，用于预测）
+function getFutureYearOptions(): number[] {
+  const years: number[] = [];
+  for (let year = START_YEAR; year <= nowYear + 5; year++) {
     years.push(year);
   }
   return years;
@@ -216,12 +225,18 @@ function createMember(id: number, role: MemberRole, name: string): Member {
 
 export default function Home() {
   const [step, setStep] = useState(1);
-  const [familyApplyYears, setFamilyApplyYears] = useState(0);
+  const [familyApplyStartYear, setFamilyApplyStartYear] = useState<number | null>(null);
   const [members, setMembers] = useState<Member[]>([
     createMember(1, "main", "主申请人"),
     createMember(2, "spouse", "配偶"),
   ]);
   const { theme, changeTheme } = useTheme();
+
+  // 计算家庭申请年限
+  const familyApplyYears = useMemo(() => {
+    if (!familyApplyStartYear || familyApplyStartYear > nowYear) return 0;
+    return nowYear - familyApplyStartYear;
+  }, [familyApplyStartYear]);
 
   const visibleMembers = useMemo(
     () => members,
@@ -402,15 +417,21 @@ export default function Home() {
 
                       <label>
                         普通摇号开始年份
-                        <input
-                          type="number"
-                          min={START_YEAR}
-                          max={nowYear + 30}
+                        <select
                           value={m.ordinaryStartYear ?? ""}
                           onChange={(e) => updateMember(m.id, { ordinaryStartYear: e.target.value ? Number(e.target.value) : null })}
-                          placeholder="例如：2021"
-                        />
-                        <span className="hint">未参与请留空，可输入未来年份</span>
+                        >
+                          <option value="">未参与</option>
+                          {getYearOptions().reverse().map(year => (
+                            <option key={year} value={year}>{year}年</option>
+                          ))}
+                        </select>
+                        <span className="hint">
+                          {m.ordinaryStartYear && (() => {
+                            const data = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
+                            return `累计${data.totalRounds}次 = ${data.totalStep}分`;
+                          })()}
+                        </span>
                       </label>
 
                       <label>
@@ -433,16 +454,17 @@ export default function Home() {
 
                       <label>
                         新能源轮候开始年份
-                        <input
-                          type="number"
-                          min={START_YEAR}
-                          max={nowYear + 30}
+                        <select
                           value={m.queueStartYear ?? ""}
                           onChange={(e) => updateMember(m.id, { queueStartYear: e.target.value ? Number(e.target.value) : null })}
-                          placeholder="例如：2023"
-                        />
+                        >
+                          <option value="">未参与</option>
+                          {getYearOptions().reverse().map(year => (
+                            <option key={year} value={year}>{year}年</option>
+                          ))}
+                        </select>
                         <span className="hint">
-                          {m.queueStartYear ? `轮候 ${calcQueueYears(m.queueStartYear, nowYear)} 年` : '未参与请留空，可输入未来年份'}
+                          {m.queueStartYear ? `轮候 ${calcQueueYears(m.queueStartYear, nowYear)} 年` : ''}
                         </span>
                       </label>
 
@@ -470,18 +492,22 @@ export default function Home() {
                 <button type="button" onClick={() => addMember("其他成员")}>👤 添加其他</button>
               </div>
 
-              <div style={{ marginTop: '24px', padding: '16px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
-                <label style={{ display: 'block', marginBottom: '12px' }}>
-                  <strong>📆 家庭申请年限（满年）</strong>
-                  <input
-                    type="number"
-                    min={0}
-                    value={familyApplyYears}
-                    onChange={(e) => setFamilyApplyYears(Number(e.target.value) || 0)}
-                    placeholder="例如：3"
+              <div style={{ marginTop: '20px', padding: '16px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
+                <label style={{ display: 'block' }}>
+                  <strong>📆 家庭申请开始年份</strong>
+                  <select
+                    value={familyApplyStartYear ?? ""}
+                    onChange={(e) => setFamilyApplyStartYear(e.target.value ? Number(e.target.value) : null)}
                     style={{ marginTop: '8px', width: '200px' }}
-                  />
-                  <span className="hint" style={{ display: 'block', marginTop: '4px' }}>每满一年，所有成员各+1分</span>
+                  >
+                    <option value="">请选择</option>
+                    {getYearOptions().reverse().map(year => (
+                      <option key={year} value={year}>{year}年</option>
+                    ))}
+                  </select>
+                  <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
+                    {familyApplyStartYear ? `已申请 ${familyApplyYears} 年，所有成员各+${familyApplyYears}分` : '选择以家庭为单位首次申请的年份'}
+                  </span>
                 </label>
               </div>
             </section>
@@ -710,6 +736,7 @@ export default function Home() {
                         <br />• 参与新能源轮候的成员：每满1年 = +1轮候分
                         <br />• 所有成员：家庭申请每满1年 = 各+1分
                         <br />• 家庭总积分 = 个人积分之和 × 计算公式 × 代际数
+                        <br />• 注意：家庭申请年限会自动增加，影响所有成员积分
                       </p>
                     </div>
                   </div>

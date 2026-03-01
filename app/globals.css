@@ -412,6 +412,17 @@ button.danger:hover {
   color: var(--text);
 }
 
+.breakdown-item.sub {
+  padding-left: 16px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.breakdown-item.sub span:last-child {
+  font-weight: 500;
+  color: var(--muted);
+}
+
 .disclaimer {
   background: var(--warning-light);
   border: 2px solid var(--warning);

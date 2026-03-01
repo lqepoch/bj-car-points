@@ -15,21 +15,34 @@ type Member = {
 const nowYear = new Date().getFullYear();
 const START_YEAR = 2011; // 北京摇号开始年份
 
-// 根据开始年份计算累计摇号次数（每年6次）
-function calcRoundsByYear(startYear: number | null, currentYear: number): number {
-  if (!startYear || startYear > currentYear) return 0;
-  const years = currentYear - startYear + 1;
+// 计算某年份区间的摇号次数（每年6次）
+function calcRoundsInPeriod(startYear: number, endYear: number): number {
+  if (startYear > endYear) return 0;
+  const years = endYear - startYear + 1;
   return years * 6;
 }
 
-// 根据开始年份计算轮候年限
-function calcQueueYears(startYear: number | null, currentYear: number): number {
-  if (!startYear || startYear > currentYear) return 0;
-  return currentYear - startYear;
+// 2020年前规则：1-2次=1分，3-4次=2分...
+function calcStepBefore2021(rounds: number): number {
+  if (rounds === 0) return 0;
+  if (rounds >= 1 && rounds <= 2) return 1;
+  if (rounds >= 3 && rounds <= 4) return 2;
+  if (rounds >= 5 && rounds <= 6) return 3;
+  if (rounds >= 7 && rounds <= 8) return 4;
+  if (rounds >= 9 && rounds <= 10) return 5;
+  if (rounds >= 11 && rounds <= 12) return 6;
+  if (rounds >= 13 && rounds <= 14) return 7;
+  if (rounds >= 15 && rounds <= 16) return 8;
+  if (rounds >= 17 && rounds <= 18) return 9;
+  if (rounds >= 19 && rounds <= 20) return 10;
+  if (rounds >= 21 && rounds <= 22) return 11;
+  if (rounds >= 23 && rounds <= 24) return 12;
+  if (rounds >= 25) return 13; // 25-78次都是13分
+  return 0;
 }
 
-// 根据摇号次数计算阶梯分（2021年后规则）
-function calcStepByRounds(rounds: number): number {
+// 2021年后规则：1-6次=1分，7-12次=2分...
+function calcStepAfter2021(rounds: number): number {
   if (rounds === 0) return 0;
   if (rounds >= 1 && rounds <= 6) return 1;
   if (rounds >= 7 && rounds <= 12) return 2;
@@ -45,6 +58,45 @@ function calcStepByRounds(rounds: number): number {
   if (rounds >= 67 && rounds <= 72) return 12;
   if (rounds >= 73 && rounds <= 78) return 13;
   return 13 + Math.floor((rounds - 78) / 6);
+}
+
+// 根据开始年份计算总阶梯分（分段计算）
+function calcTotalStepByYear(startYear: number | null, currentYear: number): { 
+  pre2021Rounds: number; 
+  post2021Rounds: number; 
+  pre2021Step: number; 
+  post2021Step: number; 
+  totalStep: number;
+  totalRounds: number;
+} {
+  if (!startYear || startYear > currentYear) {
+    return { pre2021Rounds: 0, post2021Rounds: 0, pre2021Step: 0, post2021Step: 0, totalStep: 0, totalRounds: 0 };
+  }
+
+  // 2020年前的次数（2011-2020）
+  const pre2021Rounds = startYear <= 2020 ? calcRoundsInPeriod(startYear, Math.min(2020, currentYear)) : 0;
+  
+  // 2021年后的次数（2021-现在）
+  const post2021Rounds = currentYear >= 2021 ? calcRoundsInPeriod(Math.max(startYear, 2021), currentYear) : 0;
+
+  // 分别计算阶梯分
+  const pre2021Step = calcStepBefore2021(pre2021Rounds);
+  const post2021Step = calcStepAfter2021(post2021Rounds);
+
+  return {
+    pre2021Rounds,
+    post2021Rounds,
+    pre2021Step,
+    post2021Step,
+    totalStep: pre2021Step + post2021Step,
+    totalRounds: pre2021Rounds + post2021Rounds
+  };
+}
+
+// 根据开始年份计算轮候年限
+function calcQueueYears(startYear: number | null, currentYear: number): number {
+  if (!startYear || startYear > currentYear) return 0;
+  return currentYear - startYear;
 }
 
 // 生成年份选项
@@ -90,14 +142,11 @@ export default function Home() {
       // 基础分
       const base = m.role === "main" ? 2 : 1;
       
-      // 计算普通摇号累计次数
-      const ordinaryRounds = calcRoundsByYear(m.ordinaryStartYear, nowYear);
-      
-      // 普通摇号阶梯分
-      const ordinaryStep = calcStepByRounds(ordinaryRounds);
+      // 计算普通摇号阶梯分（分段计算）
+      const ordinaryData = calcTotalStepByYear(m.ordinaryStartYear, nowYear);
       
       // C5额外加分（仅主申请人且参与普通摇号）
-      const c5Extra = m.role === "main" && m.hasC5 && ordinaryRounds > 0 ? 1 : 0;
+      const c5Extra = m.role === "main" && m.hasC5 && ordinaryData.totalRounds > 0 ? 1 : 0;
       
       // 计算新能源轮候年限
       const queueYears = calcQueueYears(m.queueStartYear, nowYear);
@@ -106,7 +155,7 @@ export default function Home() {
       const queueStep = queueYears;
       
       // 阶梯（轮候）积分 = 普通阶梯 + C5加分 + 新能源轮候
-      const stageTotal = ordinaryStep + c5Extra + queueStep;
+      const stageTotal = ordinaryData.totalStep + c5Extra + queueStep;
       
       // 个人积分 = 基础分 + 阶梯（轮候）积分 + 家庭申请年限分
       const point = base + stageTotal + familyApplyYears;
@@ -116,8 +165,12 @@ export default function Home() {
         name: m.name,
         role: m.role,
         base,
-        ordinaryRounds,
-        ordinaryStep,
+        ordinaryRounds: ordinaryData.totalRounds,
+        pre2021Rounds: ordinaryData.pre2021Rounds,
+        post2021Rounds: ordinaryData.post2021Rounds,
+        pre2021Step: ordinaryData.pre2021Step,
+        post2021Step: ordinaryData.post2021Step,
+        ordinaryStep: ordinaryData.totalStep,
         c5Extra,
         queueYears,
         queueStep,
@@ -276,7 +329,10 @@ export default function Home() {
                           ))}
                         </select>
                         <span className="hint">
-                          {m.ordinaryStartYear && `累计 ${calcRoundsByYear(m.ordinaryStartYear, nowYear)} 次，${calcStepByRounds(calcRoundsByYear(m.ordinaryStartYear, nowYear))} 个阶梯`}
+                          {m.ordinaryStartYear && (() => {
+                            const data = calcTotalStepByYear(m.ordinaryStartYear, nowYear);
+                            return `累计${data.totalRounds}次（2020前${data.pre2021Rounds}次=${data.pre2021Step}分 + 2021后${data.post2021Rounds}次=${data.post2021Step}分）`;
+                          })()}
                         </span>
                       </label>
 
@@ -357,10 +413,24 @@ export default function Home() {
                             <span>{d.base}</span>
                           </div>
                           {d.ordinaryStep > 0 && (
-                            <div className="breakdown-item">
-                              <span>普通摇号阶梯（{d.ordinaryRounds}次）</span>
-                              <span>+{d.ordinaryStep}</span>
-                            </div>
+                            <>
+                              <div className="breakdown-item">
+                                <span>普通摇号阶梯（共{d.ordinaryRounds}次）</span>
+                                <span>+{d.ordinaryStep}</span>
+                              </div>
+                              {d.pre2021Rounds > 0 && (
+                                <div className="breakdown-item sub">
+                                  <span>└ 2020年前 {d.pre2021Rounds}次</span>
+                                  <span>{d.pre2021Step}分</span>
+                                </div>
+                              )}
+                              {d.post2021Rounds > 0 && (
+                                <div className="breakdown-item sub">
+                                  <span>└ 2021年后 {d.post2021Rounds}次</span>
+                                  <span>{d.post2021Step}分</span>
+                                </div>
+                              )}
+                            </>
                           )}
                           {d.c5Extra > 0 && (
                             <div className="breakdown-item">

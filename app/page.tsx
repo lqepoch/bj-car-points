@@ -7,12 +7,26 @@ type Member = {
   id: number;
   role: MemberRole;
   name: string;
-  ordinaryRounds: number;
-  queueYears: number;
+  ordinaryStartYear: number | null;
+  queueStartYear: number | null;
   hasC5: boolean;
 };
 
 const nowYear = new Date().getFullYear();
+const START_YEAR = 2011; // 北京摇号开始年份
+
+// 根据开始年份计算累计摇号次数（每年6次）
+function calcRoundsByYear(startYear: number | null, currentYear: number): number {
+  if (!startYear || startYear > currentYear) return 0;
+  const years = currentYear - startYear + 1;
+  return years * 6;
+}
+
+// 根据开始年份计算轮候年限
+function calcQueueYears(startYear: number | null, currentYear: number): number {
+  if (!startYear || startYear > currentYear) return 0;
+  return currentYear - startYear;
+}
 
 // 根据摇号次数计算阶梯分（2021年后规则）
 function calcStepByRounds(rounds: number): number {
@@ -33,8 +47,17 @@ function calcStepByRounds(rounds: number): number {
   return 13 + Math.floor((rounds - 78) / 6);
 }
 
+// 生成年份选项
+function getYearOptions(): number[] {
+  const years: number[] = [];
+  for (let year = START_YEAR; year <= nowYear; year++) {
+    years.push(year);
+  }
+  return years;
+}
+
 function createMember(id: number, role: MemberRole, name: string): Member {
-  return { id, role, name, ordinaryRounds: 0, queueYears: 0, hasC5: false };
+  return { id, role, name, ordinaryStartYear: null, queueStartYear: null, hasC5: false };
 }
 
 export default function Home() {
@@ -67,14 +90,20 @@ export default function Home() {
       // 基础分
       const base = m.role === "main" ? 2 : 1;
       
+      // 计算普通摇号累计次数
+      const ordinaryRounds = calcRoundsByYear(m.ordinaryStartYear, nowYear);
+      
       // 普通摇号阶梯分
-      const ordinaryStep = calcStepByRounds(m.ordinaryRounds);
+      const ordinaryStep = calcStepByRounds(ordinaryRounds);
       
       // C5额外加分（仅主申请人且参与普通摇号）
-      const c5Extra = m.role === "main" && m.hasC5 && m.ordinaryRounds > 0 ? 1 : 0;
+      const c5Extra = m.role === "main" && m.hasC5 && ordinaryRounds > 0 ? 1 : 0;
+      
+      // 计算新能源轮候年限
+      const queueYears = calcQueueYears(m.queueStartYear, nowYear);
       
       // 新能源轮候分
-      const queueStep = m.queueYears;
+      const queueStep = queueYears;
       
       // 阶梯（轮候）积分 = 普通阶梯 + C5加分 + 新能源轮候
       const stageTotal = ordinaryStep + c5Extra + queueStep;
@@ -87,8 +116,10 @@ export default function Home() {
         name: m.name,
         role: m.role,
         base,
+        ordinaryRounds,
         ordinaryStep,
         c5Extra,
+        queueYears,
         queueStep,
         stageTotal,
         familyYears: familyApplyYears,
@@ -232,29 +263,39 @@ export default function Home() {
                       </label>
 
                       <label>
-                        普通摇号累计次数
-                        <input
-                          type="number"
-                          min={0}
-                          value={m.ordinaryRounds}
-                          onChange={(e) => updateMember(m.id, { ordinaryRounds: Number(e.target.value) || 0 })}
-                          placeholder="例如：24"
-                        />
+                        普通摇号开始年份
+                        <select
+                          value={m.ordinaryStartYear ?? ""}
+                          onChange={(e) => updateMember(m.id, { ordinaryStartYear: e.target.value ? Number(e.target.value) : null })}
+                        >
+                          <option value="">未参与</option>
+                          {getYearOptions().map((year) => (
+                            <option key={year} value={year}>
+                              {year}年
+                            </option>
+                          ))}
+                        </select>
                         <span className="hint">
-                          {m.ordinaryRounds > 0 && `对应 ${calcStepByRounds(m.ordinaryRounds)} 个阶梯`}
+                          {m.ordinaryStartYear && `累计 ${calcRoundsByYear(m.ordinaryStartYear, nowYear)} 次，${calcStepByRounds(calcRoundsByYear(m.ordinaryStartYear, nowYear))} 个阶梯`}
                         </span>
                       </label>
 
                       <label>
-                        新能源轮候年限
-                        <input
-                          type="number"
-                          min={0}
-                          value={m.queueYears}
-                          onChange={(e) => updateMember(m.id, { queueYears: Number(e.target.value) || 0 })}
-                          placeholder="例如：2"
-                        />
-                        <span className="hint">每满一年+1分</span>
+                        新能源轮候开始年份
+                        <select
+                          value={m.queueStartYear ?? ""}
+                          onChange={(e) => updateMember(m.id, { queueStartYear: e.target.value ? Number(e.target.value) : null })}
+                        >
+                          <option value="">未参与</option>
+                          {getYearOptions().map((year) => (
+                            <option key={year} value={year}>
+                              {year}年
+                            </option>
+                          ))}
+                        </select>
+                        <span className="hint">
+                          {m.queueStartYear && `轮候 ${calcQueueYears(m.queueStartYear, nowYear)} 年`}
+                        </span>
                       </label>
 
                       {m.role === "main" && (
@@ -317,7 +358,7 @@ export default function Home() {
                           </div>
                           {d.ordinaryStep > 0 && (
                             <div className="breakdown-item">
-                              <span>普通摇号阶梯</span>
+                              <span>普通摇号阶梯（{d.ordinaryRounds}次）</span>
                               <span>+{d.ordinaryStep}</span>
                             </div>
                           )}
@@ -329,7 +370,7 @@ export default function Home() {
                           )}
                           {d.queueStep > 0 && (
                             <div className="breakdown-item">
-                              <span>新能源轮候</span>
+                              <span>新能源轮候（{d.queueYears}年）</span>
                               <span>+{d.queueStep}</span>
                             </div>
                           )}

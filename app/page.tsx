@@ -422,7 +422,7 @@ export default function Home() {
                           onChange={(e) => updateMember(m.id, { ordinaryStartYear: e.target.value ? Number(e.target.value) : null })}
                         >
                           <option value="">未参与</option>
-                          {getYearOptions().reverse().map(year => (
+                          {getFutureYearOptions().reverse().map(year => (
                             <option key={year} value={year}>{year}年</option>
                           ))}
                         </select>
@@ -459,7 +459,7 @@ export default function Home() {
                           onChange={(e) => updateMember(m.id, { queueStartYear: e.target.value ? Number(e.target.value) : null })}
                         >
                           <option value="">未参与</option>
-                          {getYearOptions().reverse().map(year => (
+                          {getFutureYearOptions().reverse().map(year => (
                             <option key={year} value={year}>{year}年</option>
                           ))}
                         </select>

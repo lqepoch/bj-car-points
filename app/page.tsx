@@ -444,13 +444,23 @@ export default function Home() {
                   <div className="formula-box">
                     <h3>计算公式</h3>
                     {includeSpouse ? (
-                      <p className="formula">
-                        总积分 = [(主申请人 + 配偶) × 2 + 其他成员] × 代际数
-                      </p>
+                      <div>
+                        <p className="formula" style={{ marginBottom: '8px' }}>
+                          总积分 = [(主申请人 + 配偶) × 2 + 其他成员之和] × 代际数
+                        </p>
+                        <p className="formula" style={{ fontSize: '14px', color: '#666' }}>
+                          = [({result.detail.find(d => d.role === "main")?.point || 0} + {result.detail.find(d => d.role === "spouse")?.point || 0}) × 2 + {result.detail.filter(d => d.role === "other").map(d => d.point).join(' + ') || '0'}] × {generations} = {result.total}分
+                        </p>
+                      </div>
                     ) : (
-                      <p className="formula">
-                        总积分 = (主申请人 + 其他成员) × 代际数
-                      </p>
+                      <div>
+                        <p className="formula" style={{ marginBottom: '8px' }}>
+                          总积分 = (主申请人 + 其他成员之和) × 代际数
+                        </p>
+                        <p className="formula" style={{ fontSize: '14px', color: '#666' }}>
+                          = ({result.detail.find(d => d.role === "main")?.point || 0} + {result.detail.filter(d => d.role === "other").map(d => d.point).join(' + ') || '0'}) × {generations} = {result.total}分
+                        </p>
+                      </div>
                     )}
                   </div>
 

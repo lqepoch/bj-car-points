@@ -527,8 +527,6 @@ export default function Home() {
                   <div className="prediction-box">
                     <p className="muted small" style={{ marginBottom: '16px' }}>
                       基于当前规则，假设所有成员继续参与摇号/轮候，预测未来5年家庭总积分变化。
-                      <br />
-                      <strong>说明：</strong>每年增加的积分包括：①普通摇号每年2次=+1阶梯分 ②家庭申请年限+1年=所有成员各+1分
                     </p>
                     <table className="policy-table">
                       <thead>
@@ -539,6 +537,7 @@ export default function Home() {
                             <th key={d.id}>{d.name}</th>
                           ))}
                           <th>家庭总积分</th>
+                          <th>较上年增加</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -586,6 +585,48 @@ export default function Home() {
                             ? ((futureMainPoint + futureSpousePoint) * 2 + futureOthersPoint) * generations
                             : (futureMainPoint + futureOthersPoint) * generations;
                           
+                          // 计算较上年增加（第一年显示为"-"）
+                          let increase = '-';
+                          if (yearOffset > 0) {
+                            const prevYear = nowYear + yearOffset - 1;
+                            const prevFamilyYears = familyApplyYears + yearOffset - 1;
+                            
+                            const prevDetails = result.detail.map((d) => {
+                              const member = visibleMembers.find(m => m.id === d.id);
+                              if (!member) return { ...d, point: d.point };
+                              
+                              let prevOrdinaryStep = d.ordinaryStep;
+                              if (member.ordinaryStartYear) {
+                                const prevData = calcTotalStepByYearAndHalf(
+                                  member.ordinaryStartYear,
+                                  member.ordinaryStartHalf,
+                                  prevYear
+                                );
+                                prevOrdinaryStep = prevData.totalStep;
+                              }
+                              
+                              let prevQueueStep = d.queueStep;
+                              if (member.queueStartYear) {
+                                prevQueueStep = calcQueueYears(member.queueStartYear, prevYear);
+                              }
+                              
+                              const prevStageTotal = prevOrdinaryStep + d.c5Extra + prevQueueStep;
+                              const prevPoint = d.base + prevStageTotal + prevFamilyYears;
+                              
+                              return { ...d, point: prevPoint };
+                            });
+                            
+                            const prevMainPoint = prevDetails.find((d) => d.role === "main")?.point ?? 0;
+                            const prevSpousePoint = prevDetails.find((d) => d.role === "spouse")?.point ?? 0;
+                            const prevOthersPoint = prevDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+                            
+                            const prevTotal = includeSpouse
+                              ? ((prevMainPoint + prevSpousePoint) * 2 + prevOthersPoint) * generations
+                              : (prevMainPoint + prevOthersPoint) * generations;
+                            
+                            increase = `+${futureTotal - prevTotal}`;
+                          }
+                          
                           return (
                             <tr key={yearOffset} style={{ background: yearOffset === 0 ? '#f0f9ff' : 'transparent' }}>
                               <td>{futureYear}年{yearOffset === 0 ? '（当前）' : ''}</td>
@@ -594,11 +635,21 @@ export default function Home() {
                                 <td key={d.id}>{d.point}分</td>
                               ))}
                               <td><strong>{futureTotal}分</strong></td>
+                              <td>{increase}</td>
                             </tr>
                           );
                         })}
                       </tbody>
                     </table>
+                    <div style={{ marginTop: '12px', padding: '12px', background: '#fffbeb', borderRadius: '8px' }}>
+                      <p className="muted small" style={{ margin: 0 }}>
+                        <strong>增长说明：</strong>
+                        <br />• 参与普通摇号的成员：每年2次摇号 = +1阶梯分
+                        <br />• 参与新能源轮候的成员：每满1年 = +1轮候分
+                        <br />• 所有成员：家庭申请每满1年 = 各+1分
+                        <br />• 家庭总积分 = 个人积分之和 × 计算公式 × 代际数
+                      </p>
+                    </div>
                   </div>
 
                   <div className="disclaimer">

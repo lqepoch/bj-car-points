@@ -3,11 +3,14 @@
 import { useMemo, useState } from "react";
 
 type MemberRole = "main" | "spouse" | "other";
+type Half = "first" | "second"; // 上半年/下半年
+
 type Member = {
   id: number;
   role: MemberRole;
   name: string;
   ordinaryStartYear: number | null;
+  ordinaryStartHalf: Half;
   queueStartYear: number | null;
   hasC5: boolean;
 };
@@ -15,30 +18,83 @@ type Member = {
 const nowYear = new Date().getFullYear();
 const START_YEAR = 2011; // 北京摇号开始年份
 
-// 计算某年份区间的摇号次数（每年6次）
-function calcRoundsInPeriod(startYear: number, endYear: number): number {
-  if (startYear > endYear) return 0;
-  const years = endYear - startYear + 1;
-  return years * 6;
+// 获取当前是上半年还是下半年（基于摇号日期）
+function getCurrentHalf(): Half {
+  const now = new Date();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  // 12月26日之后算完成了下半年摇号，否则只完成了上半年
+  if (month === 12 && day >= 26) {
+    return "second";
+  } else if (month >= 6 && (month > 6 || day >= 26)) {
+    // 6月26日之后到12月25日之间，算完成了上半年
+    return "first";
+  }
+  // 6月26日之前，上一年的下半年都还没开始
+  return "none" as any; // 表示当年还没有摇号
 }
 
-// 2020年前规则：1-2次=1分，3-4次=2分...
+// 计算从开始年份+半年到当前已经参加的摇号次数
+// 每年2次：6月26日（上半年）和12月26日（下半年）
+function calcRoundsByYearAndHalf(
+  startYear: number | null,
+  startHalf: Half,
+  currentYear: number
+): number {
+  if (!startYear || startYear > currentYear) return 0;
+  
+  const now = new Date();
+  const currentMonth = now.getMonth() + 1;
+  const currentDay = now.getDate();
+  
+  let rounds = 0;
+  
+  for (let year = startYear; year <= currentYear; year++) {
+    if (year === currentYear) {
+      // 当前年份：根据实际日期判断
+      if (currentMonth > 12 || (currentMonth === 12 && currentDay >= 26)) {
+        // 12月26日之后，两次都完成了
+        rounds += (year === startYear && startHalf === "second") ? 1 : 2;
+      } else if (currentMonth > 6 || (currentMonth === 6 && currentDay >= 26)) {
+        // 6月26日之后，只完成了上半年
+        rounds += (year === startYear && startHalf === "second") ? 0 : 1;
+      } else {
+        // 6月26日之前，当年还没有摇号
+        rounds += 0;
+      }
+    } else if (year === startYear) {
+      // 开始年份（不是当前年）
+      if (startHalf === "first") {
+        rounds += 2; // 从上半年开始，当年参加2次
+      } else {
+        rounds += 1; // 从下半年开始，当年参加1次
+      }
+    } else {
+      // 中间的完整年份，每年2次
+      rounds += 2;
+    }
+  }
+  
+  return rounds;
+}
+
+// 2020年前规则：1-6次=1分，7-12次=2分...（每6次一档）
 function calcStepBefore2021(rounds: number): number {
   if (rounds === 0) return 0;
-  if (rounds >= 1 && rounds <= 2) return 1;
-  if (rounds >= 3 && rounds <= 4) return 2;
-  if (rounds >= 5 && rounds <= 6) return 3;
-  if (rounds >= 7 && rounds <= 8) return 4;
-  if (rounds >= 9 && rounds <= 10) return 5;
-  if (rounds >= 11 && rounds <= 12) return 6;
-  if (rounds >= 13 && rounds <= 14) return 7;
-  if (rounds >= 15 && rounds <= 16) return 8;
-  if (rounds >= 17 && rounds <= 18) return 9;
-  if (rounds >= 19 && rounds <= 20) return 10;
-  if (rounds >= 21 && rounds <= 22) return 11;
-  if (rounds >= 23 && rounds <= 24) return 12;
-  if (rounds >= 25) return 13; // 25-78次都是13分
-  return 0;
+  if (rounds >= 1 && rounds <= 6) return 1;
+  if (rounds >= 7 && rounds <= 12) return 2;
+  if (rounds >= 13 && rounds <= 18) return 3;
+  if (rounds >= 19 && rounds <= 24) return 4;
+  if (rounds >= 25 && rounds <= 30) return 5;
+  if (rounds >= 31 && rounds <= 36) return 6;
+  if (rounds >= 37 && rounds <= 42) return 7;
+  if (rounds >= 43 && rounds <= 48) return 8;
+  if (rounds >= 49 && rounds <= 54) return 9;
+  if (rounds >= 55 && rounds <= 60) return 10;
+  if (rounds >= 61 && rounds <= 66) return 11;
+  if (rounds >= 67 && rounds <= 72) return 12;
+  if (rounds >= 73 && rounds <= 78) return 13;
+  return 13; // 超过78次按13分计算
 }
 
 // 2021年后规则：1-2次=1分，3-4次=2分，5-6次=3分...（每2次+1分，上不封顶）
@@ -48,8 +104,12 @@ function calcStepAfter2021(rounds: number): number {
   return Math.ceil(rounds / 2);
 }
 
-// 根据开始年份计算总阶梯分（分段计算）
-function calcTotalStepByYear(startYear: number | null, currentYear: number): { 
+// 根据开始年份和半年计算总阶梯分（分段计算）
+function calcTotalStepByYearAndHalf(
+  startYear: number | null,
+  startHalf: Half,
+  currentYear: number
+): { 
   pre2021Rounds: number; 
   post2021Rounds: number; 
   pre2021Step: number; 
@@ -61,11 +121,19 @@ function calcTotalStepByYear(startYear: number | null, currentYear: number): {
     return { pre2021Rounds: 0, post2021Rounds: 0, pre2021Step: 0, post2021Step: 0, totalStep: 0, totalRounds: 0 };
   }
 
-  // 2020年前的次数（2011-2020）
-  const pre2021Rounds = startYear <= 2020 ? calcRoundsInPeriod(startYear, Math.min(2020, currentYear)) : 0;
-  
-  // 2021年后的次数（2021-现在）
-  const post2021Rounds = currentYear >= 2021 ? calcRoundsInPeriod(Math.max(startYear, 2021), currentYear) : 0;
+  let pre2021Rounds = 0;
+  let post2021Rounds = 0;
+
+  if (startYear <= 2020) {
+    // 2020年及之前开始
+    pre2021Rounds = calcRoundsByYearAndHalf(startYear, startHalf, Math.min(2020, currentYear));
+    if (currentYear >= 2021) {
+      post2021Rounds = calcRoundsByYearAndHalf(2021, "first", currentYear);
+    }
+  } else {
+    // 2021年及之后开始
+    post2021Rounds = calcRoundsByYearAndHalf(startYear, startHalf, currentYear);
+  }
 
   // 分别计算阶梯分
   const pre2021Step = calcStepBefore2021(pre2021Rounds);
@@ -97,7 +165,7 @@ function getYearOptions(): number[] {
 }
 
 function createMember(id: number, role: MemberRole, name: string): Member {
-  return { id, role, name, ordinaryStartYear: null, queueStartYear: null, hasC5: false };
+  return { id, role, name, ordinaryStartYear: null, ordinaryStartHalf: "first", queueStartYear: null, hasC5: false };
 }
 
 export default function Home() {
@@ -131,7 +199,7 @@ export default function Home() {
       const base = m.role === "main" ? 2 : 1;
       
       // 计算普通摇号阶梯分（分段计算）
-      const ordinaryData = calcTotalStepByYear(m.ordinaryStartYear, nowYear);
+      const ordinaryData = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
       
       // C5额外加分（仅主申请人且参与普通摇号）
       const c5Extra = m.role === "main" && m.hasC5 && ordinaryData.totalRounds > 0 ? 1 : 0;
@@ -316,9 +384,21 @@ export default function Home() {
                             </option>
                           ))}
                         </select>
+                      </label>
+
+                      <label>
+                        开始参与时段
+                        <select
+                          value={m.ordinaryStartHalf}
+                          onChange={(e) => updateMember(m.id, { ordinaryStartHalf: e.target.value as Half })}
+                          disabled={!m.ordinaryStartYear}
+                        >
+                          <option value="first">上半年（6月）</option>
+                          <option value="second">下半年（12月）</option>
+                        </select>
                         <span className="hint">
                           {m.ordinaryStartYear && (() => {
-                            const data = calcTotalStepByYear(m.ordinaryStartYear, nowYear);
+                            const data = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
                             return `累计${data.totalRounds}次（2020前${data.pre2021Rounds}次=${data.pre2021Step}分 + 2021后${data.post2021Rounds}次=${data.post2021Step}分）`;
                           })()}
                         </span>
@@ -510,13 +590,15 @@ export default function Home() {
         <h2>政策规则说明</h2>
         
         <div className="rule-section">
-          <h3>普通摇号阶梯分对照表（2021年后）</h3>
+          <h3>普通摇号阶梯分对照表</h3>
           <div className="table-wrap">
             <table className="policy-table">
               <thead>
                 <tr>
-                  <th>累计次数</th>
-                  <th>阶梯分</th>
+                  <th colSpan={2}>2020年12月31日前规则</th>
+                  <th colSpan={2}>2021年1月1日后规则</th>
+                </tr>
+                <tr>
                   <th>累计次数</th>
                   <th>阶梯分</th>
                   <th>累计次数</th>
@@ -527,46 +609,93 @@ export default function Home() {
                 <tr>
                   <td>0次</td>
                   <td>0分</td>
-                  <td>25-30次</td>
-                  <td>5分</td>
-                  <td>55-60次</td>
-                  <td>10分</td>
+                  <td>0次</td>
+                  <td>0分</td>
                 </tr>
                 <tr>
                   <td>1-6次</td>
                   <td>1分</td>
-                  <td>31-36次</td>
-                  <td>6分</td>
-                  <td>61-66次</td>
-                  <td>11分</td>
+                  <td>1-2次</td>
+                  <td>1分</td>
                 </tr>
                 <tr>
                   <td>7-12次</td>
                   <td>2分</td>
-                  <td>37-42次</td>
-                  <td>7分</td>
-                  <td>67-72次</td>
-                  <td>12分</td>
+                  <td>3-4次</td>
+                  <td>2分</td>
                 </tr>
                 <tr>
                   <td>13-18次</td>
                   <td>3分</td>
-                  <td>43-48次</td>
-                  <td>8分</td>
-                  <td>73-78次</td>
-                  <td>13分</td>
+                  <td>5-6次</td>
+                  <td>3分</td>
                 </tr>
                 <tr>
                   <td>19-24次</td>
                   <td>4分</td>
+                  <td>7-8次</td>
+                  <td>4分</td>
+                </tr>
+                <tr>
+                  <td>25-30次</td>
+                  <td>5分</td>
+                  <td>9-10次</td>
+                  <td>5分</td>
+                </tr>
+                <tr>
+                  <td>31-36次</td>
+                  <td>6分</td>
+                  <td>11-12次</td>
+                  <td>6分</td>
+                </tr>
+                <tr>
+                  <td>37-42次</td>
+                  <td>7分</td>
+                  <td>13-14次</td>
+                  <td>7分</td>
+                </tr>
+                <tr>
+                  <td>43-48次</td>
+                  <td>8分</td>
+                  <td>15-16次</td>
+                  <td>8分</td>
+                </tr>
+                <tr>
                   <td>49-54次</td>
                   <td>9分</td>
-                  <td>78次以上</td>
-                  <td>每6次+1分</td>
+                  <td>17-18次</td>
+                  <td>9分</td>
+                </tr>
+                <tr>
+                  <td>55-60次</td>
+                  <td>10分</td>
+                  <td>19-20次</td>
+                  <td>10分</td>
+                </tr>
+                <tr>
+                  <td>61-66次</td>
+                  <td>11分</td>
+                  <td>21-22次</td>
+                  <td>11分</td>
+                </tr>
+                <tr>
+                  <td>67-72次</td>
+                  <td>12分</td>
+                  <td>23-24次</td>
+                  <td>12分</td>
+                </tr>
+                <tr>
+                  <td>73-78次</td>
+                  <td>13分</td>
+                  <td>25次及以上</td>
+                  <td>每2次+1分（上不封顶）</td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <p className="muted small" style={{ marginTop: 12 }}>
+            说明：每年2次摇号（6月26日和12月26日）。2025年下半年到2026年3月1日，只参加了1次（2025年12月26日）。
+          </p>
         </div>
 
         <div className="rule-section">

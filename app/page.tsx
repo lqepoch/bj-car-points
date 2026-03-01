@@ -1,370 +1,106 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { useScoreCalculation } from './hooks/useScoreCalculation';
+import { useTheme, useFamilyMembers, useFamilyApplyYear, useSteps, useValidation, useCalculationHistory } from './store/useAppStore';
+import { validateAll, groupErrorsByField } from './utils/validation';
+import MemberCard from './components/MemberCard';
+import ScoreDisplay from './components/ScoreDisplay';
+import FuturePrediction from './components/FuturePrediction';
+import PolicySection from './components/PolicySection';
+import CalculationHistory from './components/CalculationHistory';
+import ErrorMessage from './components/ErrorMessage';
+import AccessibilityEnhancements from './components/AccessibilityEnhancements';
 
-type MemberRole = "main" | "spouse" | "other";
-type Half = "first" | "second"; // 上半年/下半年
 type Theme = "light" | "dark" | "auto";
 
-type Member = {
-  id: number;
-  role: MemberRole;
-  name: string;
-  ordinaryStartYear: number | null;
-  ordinaryStartHalf: Half;
-  queueStartYear: number | null;
-  hasC5: boolean;
-};
-
-const nowYear = new Date().getFullYear();
-const START_YEAR = 2011; // 北京摇号开始年份
-
-// Theme hook
-function useTheme() {
-  const [theme, setTheme] = useState<Theme>("auto");
-
-  useEffect(() => {
-    // Load saved theme
-    const saved = localStorage.getItem("theme") as Theme;
-    if (saved) {
-      setTheme(saved);
-    }
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    if (theme === "auto") {
-      // Follow system preference
-      const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-      const updateTheme = () => {
-        root.setAttribute("data-theme", mediaQuery.matches ? "dark" : "light");
-      };
-      updateTheme();
-      mediaQuery.addEventListener("change", updateTheme);
-      return () => mediaQuery.removeEventListener("change", updateTheme);
-    } else {
-      root.setAttribute("data-theme", theme);
-    }
-  }, [theme]);
-
-  const changeTheme = (newTheme: Theme) => {
-    setTheme(newTheme);
-    localStorage.setItem("theme", newTheme);
-  };
-
-  return { theme, changeTheme };
-}
-
-// 获取当前是上半年还是下半年（基于摇号日期）
-function getCurrentHalf(): Half {
-  const now = new Date();
-  const month = now.getMonth() + 1;
-  const day = now.getDate();
-  // 12月26日之后算完成了下半年摇号，否则只完成了上半年
-  if (month === 12 && day >= 26) {
-    return "second";
-  } else if (month >= 6 && (month > 6 || day >= 26)) {
-    // 6月26日之后到12月25日之间，算完成了上半年
-    return "first";
-  }
-  // 6月26日之前，上一年的下半年都还没开始
-  return "none" as any; // 表示当年还没有摇号
-}
-
-// 计算从开始年份+半年到当前已经参加的摇号次数
-// 每年2次：6月26日（上半年）和12月26日（下半年）
-// 注意：第一次参加算0次，之后每次+1
-// 如果开始年份在未来，返回0（还未开始）
-function calcRoundsByYearAndHalf(
-  startYear: number | null,
-  startHalf: Half,
-  currentYear: number
-): number {
-  if (!startYear) return 0;
-  
-  // 如果开始年份在未来，返回0
-  if (startYear > currentYear) return 0;
-  
-  const now = new Date();
-  const currentMonth = now.getMonth() + 1;
-  const currentDay = now.getDate();
-  
-  let rounds = 0;
-  
-  for (let year = startYear; year <= currentYear; year++) {
-    if (year === currentYear) {
-      // 当前年份：根据实际日期判断
-      if (currentMonth > 12 || (currentMonth === 12 && currentDay >= 26)) {
-        // 12月26日之后，两次都完成了
-        rounds += (year === startYear && startHalf === "second") ? 1 : 2;
-      } else if (currentMonth > 6 || (currentMonth === 6 && currentDay >= 26)) {
-        // 6月26日之后，只完成了上半年
-        rounds += (year === startYear && startHalf === "second") ? 0 : 1;
-      } else {
-        // 6月26日之前，当年还没有摇号
-        rounds += 0;
-      }
-    } else if (year === startYear) {
-      // 开始年份（不是当前年）
-      if (startHalf === "first") {
-        rounds += 2; // 从上半年开始，当年参加2次
-      } else {
-        rounds += 1; // 从下半年开始，当年参加1次
-      }
-    } else {
-      // 中间的完整年份，每年2次
-      rounds += 2;
-    }
-  }
-  
-  // 第一次参加算0次，所以总次数要减1（如果有参加的话）
-  return rounds > 0 ? rounds - 1 : 0;
-}
-
-// 2020年前规则：1-6次=1分，7-12次=2分...（每6次一档）
-function calcStepBefore2021(rounds: number): number {
-  if (rounds === 0) return 0;
-  if (rounds >= 1 && rounds <= 6) return 1;
-  if (rounds >= 7 && rounds <= 12) return 2;
-  if (rounds >= 13 && rounds <= 18) return 3;
-  if (rounds >= 19 && rounds <= 24) return 4;
-  if (rounds >= 25 && rounds <= 30) return 5;
-  if (rounds >= 31 && rounds <= 36) return 6;
-  if (rounds >= 37 && rounds <= 42) return 7;
-  if (rounds >= 43 && rounds <= 48) return 8;
-  if (rounds >= 49 && rounds <= 54) return 9;
-  if (rounds >= 55 && rounds <= 60) return 10;
-  if (rounds >= 61 && rounds <= 66) return 11;
-  if (rounds >= 67 && rounds <= 72) return 12;
-  if (rounds >= 73 && rounds <= 78) return 13;
-  return 13; // 超过78次按13分计算
-}
-
-// 2021年后规则：1-2次=1分，3-4次=2分，5-6次=3分...（每2次+1分，上不封顶）
-function calcStepAfter2021(rounds: number): number {
-  if (rounds === 0) return 0;
-  // 每2次增加1分，向上取整
-  return Math.ceil(rounds / 2);
-}
-
-// 根据开始年份和半年计算总阶梯分（分段计算）
-function calcTotalStepByYearAndHalf(
-  startYear: number | null,
-  startHalf: Half,
-  currentYear: number
-): { 
-  pre2021Rounds: number; 
-  post2021Rounds: number; 
-  pre2021Step: number; 
-  post2021Step: number; 
-  totalStep: number;
-  totalRounds: number;
-} {
-  if (!startYear || startYear > currentYear) {
-    return { pre2021Rounds: 0, post2021Rounds: 0, pre2021Step: 0, post2021Step: 0, totalStep: 0, totalRounds: 0 };
-  }
-
-  let pre2021Rounds = 0;
-  let post2021Rounds = 0;
-
-  if (startYear <= 2020) {
-    // 2020年及之前开始
-    pre2021Rounds = calcRoundsByYearAndHalf(startYear, startHalf, Math.min(2020, currentYear));
-    if (currentYear >= 2021) {
-      post2021Rounds = calcRoundsByYearAndHalf(2021, "first", currentYear);
-    }
-  } else {
-    // 2021年及之后开始
-    post2021Rounds = calcRoundsByYearAndHalf(startYear, startHalf, currentYear);
-  }
-
-  // 分别计算阶梯分
-  const pre2021Step = calcStepBefore2021(pre2021Rounds);
-  const post2021Step = calcStepAfter2021(post2021Rounds);
-
-  return {
-    pre2021Rounds,
-    post2021Rounds,
-    pre2021Step,
-    post2021Step,
-    totalStep: pre2021Step + post2021Step,
-    totalRounds: pre2021Rounds + post2021Rounds
-  };
-}
-
-// 根据开始年份计算轮候年限
-// 如果开始年份在未来，返回0
-function calcQueueYears(startYear: number | null, currentYear: number): number {
-  if (!startYear) return 0;
-  if (startYear > currentYear) return 0; // 未来年份，还未开始
-  return currentYear - startYear;
-}
-
-// 生成年份选项（从2011年到当前年份）
+// 工具函数
 function getYearOptions(): number[] {
-  const years: number[] = [];
-  for (let year = START_YEAR; year <= nowYear; year++) {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let year = 2011; year <= currentYear; year++) {
     years.push(year);
   }
   return years;
 }
 
-// 生成未来年份选项（包含未来5年，用于预测）
 function getFutureYearOptions(): number[] {
-  const years: number[] = [];
-  for (let year = START_YEAR; year <= nowYear + 5; year++) {
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let year = 2011; year <= currentYear + 1; year++) {
     years.push(year);
   }
   return years;
-}
-
-function createMember(id: number, role: MemberRole, name: string): Member {
-  return { id, role, name, ordinaryStartYear: null, ordinaryStartHalf: "first", queueStartYear: null, hasC5: false };
 }
 
 export default function Home() {
-  const [step, setStep] = useState(1);
-  const [familyApplyStartYear, setFamilyApplyStartYear] = useState<number | null>(null);
-  const [members, setMembers] = useState<Member[]>([
-    createMember(1, "main", "主申请人"),
-    createMember(2, "spouse", "配偶"),
-  ]);
-  const { theme, changeTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+  const { currentStep, setCurrentStep, nextStep, prevStep } = useSteps();
+  const { members, updateMember, addMember, removeMember } = useFamilyMembers();
+  const { familyApplyStartYear, setFamilyApplyStartYear } = useFamilyApplyYear();
+  const { errors, setErrors, clearErrors } = useValidation();
+  const { saveCalculation } = useCalculationHistory();
+  
+  const [showHistory, setShowHistory] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveName, setSaveName] = useState("");
+
+  const result = useScoreCalculation(members, familyApplyStartYear);
+  const yearOptions = useMemo(() => getYearOptions(), []);
+  const futureYearOptions = useMemo(() => getFutureYearOptions(), []);
+
+  // 实时验证
+  const validation = useMemo(() => {
+    return validateAll(members, familyApplyStartYear);
+  }, [members, familyApplyStartYear]);
+
+  const groupedErrors = useMemo(() => {
+    return groupErrorsByField(validation.errors);
+  }, [validation.errors]);
 
   // 计算家庭申请年限
   const familyApplyYears = useMemo(() => {
+    const nowYear = new Date().getFullYear();
     if (!familyApplyStartYear || familyApplyStartYear > nowYear) return 0;
     return nowYear - familyApplyStartYear;
   }, [familyApplyStartYear]);
 
-  const visibleMembers = useMemo(
-    () => members,
-    [members]
-  );
-
-  // 自动计算代际数：根据成员关系判断
-  const generations = useMemo(() => {
-    const roles = visibleMembers.map(m => m.name.toLowerCase());
-    const hasParent = roles.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
-    const hasChild = roles.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
-    
-    if (hasParent && hasChild) return 3; // 三代：父母+自己+子女
-    if (hasParent || hasChild) return 2; // 两代：父母+自己 或 自己+子女
-    return 1; // 一代：只有夫妻
-  }, [visibleMembers]);
-
-  // 自动判断是否包含配偶
-  const includeSpouse = useMemo(() => {
-    return visibleMembers.some(m => m.role === "spouse");
-  }, [visibleMembers]);
-
-  const result = useMemo(() => {
-    const main = visibleMembers.find((m) => m.role === "main");
-    const spouse = visibleMembers.find((m) => m.role === "spouse");
-
-    if (!main) {
-      return { ok: false, message: "至少需要1位主申请人", total: 0, detail: [] };
+  // 处理步骤切换
+  const handleNextStep = useCallback(() => {
+    if (currentStep === 1) {
+      // 验证第一步的数据
+      if (!validation.isValid) {
+        setErrors(groupedErrors);
+        return;
+      }
+      clearErrors();
     }
-    if (includeSpouse && !spouse) {
-      return { ok: false, message: "请添加配偶成员", total: 0, detail: [] };
+    nextStep();
+  }, [currentStep, validation.isValid, groupedErrors, setErrors, clearErrors, nextStep]);
+
+  // 保存计算结果
+  const handleSaveCalculation = useCallback(() => {
+    if (result.ok) {
+      const name = saveName.trim() || `计算记录 ${new Date().toLocaleString()}`;
+      saveCalculation(members, familyApplyStartYear, result.total, name);
+      setSaveDialogOpen(false);
+      setSaveName("");
     }
+  }, [result, members, familyApplyStartYear, saveName, saveCalculation]);
 
-    const detail = visibleMembers.map((m) => {
-      // 基础分
-      const base = m.role === "main" ? 2 : 1;
-      
-      // 判断成员在当前年份是否已经开始参与
-      const ordinaryStarted = m.ordinaryStartYear && m.ordinaryStartYear <= nowYear;
-      const queueStarted = m.queueStartYear && m.queueStartYear <= nowYear;
-      const memberStarted = ordinaryStarted || queueStarted;
-      
-      // 计算普通摇号阶梯分（分段计算）
-      const ordinaryData = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
-      
-      // C5额外加分（仅主申请人且参与普通摇号）
-      const c5Extra = m.role === "main" && m.hasC5 && ordinaryData.totalRounds > 0 ? 1 : 0;
-      
-      // 计算新能源轮候年限
-      const queueYears = calcQueueYears(m.queueStartYear, nowYear);
-      
-      // 新能源轮候分
-      const queueStep = queueYears;
-      
-      // 阶梯（轮候）积分 = 普通阶梯 + C5加分 + 新能源轮候
-      const stageTotal = ordinaryData.totalStep + c5Extra + queueStep;
-      
-      // 家庭申请年限分：只有已经开始参与的成员才能获得
-      const memberFamilyYears = memberStarted ? familyApplyYears : 0;
-      
-      // 个人积分 = 基础分 + 阶梯（轮候）积分 + 家庭申请年限分
-      const point = memberStarted ? (base + stageTotal + memberFamilyYears) : 0;
-
-      return {
-        id: m.id,
-        name: m.name,
-        role: m.role,
-        base,
-        ordinaryRounds: ordinaryData.totalRounds,
-        pre2021Rounds: ordinaryData.pre2021Rounds,
-        post2021Rounds: ordinaryData.post2021Rounds,
-        pre2021Step: ordinaryData.pre2021Step,
-        post2021Step: ordinaryData.post2021Step,
-        ordinaryStep: ordinaryData.totalStep,
-        c5Extra,
-        queueYears,
-        queueStep,
-        stageTotal,
-        familyYears: memberFamilyYears,
-        point,
-      };
-    });
-
-    // 过滤出已经开始参与的成员（积分>0）
-    const activeMembers = detail.filter(d => d.point > 0);
-    
-    // 根据已开始参与的成员动态计算代际数
-    const activeMemberNames = activeMembers.map(d => d.name.toLowerCase());
-    const hasParent = activeMemberNames.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
-    const hasChild = activeMemberNames.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
-    
-    let activeGenerations = 1; // 默认1代
-    if (hasParent && hasChild) {
-      activeGenerations = 3; // 三代：父母+自己+子女
-    } else if (hasParent || hasChild) {
-      activeGenerations = 2; // 两代：父母+自己 或 自己+子女
-    }
-    
-    const mainPoint = activeMembers.find((d) => d.role === "main")?.point ?? 0;
-    const spousePoint = activeMembers.find((d) => d.role === "spouse")?.point ?? 0;
-    const othersPoint = activeMembers.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
-
-    // 判断是否包含配偶（且配偶已开始参与）
-    const activeIncludeSpouse = activeMembers.some(d => d.role === "spouse");
-    
-    // 家庭总积分公式
-    const total = activeIncludeSpouse
-      ? ((mainPoint + spousePoint) * 2 + othersPoint) * activeGenerations
-      : (mainPoint + othersPoint) * activeGenerations;
-
-    return { ok: true, message: "", total, detail };
-  }, [visibleMembers, includeSpouse, generations, familyApplyYears]);
-
-  function updateMember(id: number, patch: Partial<Member>) {
-    setMembers((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
-  }
-
-  function addMember(name: string) {
-    const nextId = Math.max(...members.map((m) => m.id)) + 1;
-    setMembers((prev) => [...prev, createMember(nextId, "other", name)]);
-  }
-
-  function removeMember(id: number) {
-    setMembers((prev) => prev.filter((m) => m.id !== id));
-  }
+  // 加载历史记录
+  const handleLoadCalculation = useCallback((historyMembers: any[], historyFamilyYear: number | null) => {
+    // 这里需要重新设置所有成员数据
+    // 由于我们的hook设计，需要逐个更新
+    // 简化处理：提示用户手动输入
+    alert('历史记录加载功能需要手动复制数据，未来版本将支持一键加载');
+    setShowHistory(false);
+  }, []);
 
   return (
     <main className="container">
+      <AccessibilityEnhancements />
+      
       {/* 头部 */}
       <div className="hero card">
         <div className="hero-content">
@@ -374,24 +110,32 @@ export default function Home() {
           </p>
         </div>
         <div className="hero-actions">
+          <button
+            type="button"
+            className="small"
+            onClick={() => setShowHistory(!showHistory)}
+            aria-label="查看计算历史"
+          >
+            📚 历史记录
+          </button>
           <div className="theme-toggle">
             <button
               className={theme === "light" ? "active" : ""}
-              onClick={() => changeTheme("light")}
+              onClick={() => setTheme("light")}
               title="浅色模式"
             >
               ☀️
             </button>
             <button
               className={theme === "auto" ? "active" : ""}
-              onClick={() => changeTheme("auto")}
+              onClick={() => setTheme("auto")}
               title="跟随系统"
             >
               AUTO
             </button>
             <button
               className={theme === "dark" ? "active" : ""}
-              onClick={() => changeTheme("dark")}
+              onClick={() => setTheme("dark")}
               title="深色模式"
             >
               🌙
@@ -402,8 +146,67 @@ export default function Home() {
 
       <div className="workbench">
         <div className="workbench-main">
+          {/* 历史记录弹窗 */}
+          {showHistory && (
+            <div className="modal-overlay" onClick={() => setShowHistory(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h2>计算历史记录</h2>
+                  <button 
+                    type="button" 
+                    className="modal-close"
+                    onClick={() => setShowHistory(false)}
+                    aria-label="关闭历史记录"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <CalculationHistory onLoadCalculation={handleLoadCalculation} />
+              </div>
+            </div>
+          )}
+
+          {/* 保存对话框 */}
+          {saveDialogOpen && (
+            <div className="modal-overlay" onClick={() => setSaveDialogOpen(false)}>
+              <div className="modal-content small" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3>保存计算结果</h3>
+                  <button 
+                    type="button" 
+                    className="modal-close"
+                    onClick={() => setSaveDialogOpen(false)}
+                    aria-label="关闭保存对话框"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="modal-body">
+                  <label>
+                    记录名称
+                    <input
+                      type="text"
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      placeholder={`计算记录 ${new Date().toLocaleString()}`}
+                      autoFocus
+                    />
+                  </label>
+                  <div className="modal-actions">
+                    <button type="button" onClick={() => setSaveDialogOpen(false)}>
+                      取消
+                    </button>
+                    <button type="button" onClick={handleSaveCalculation}>
+                      保存
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 步骤1：成员信息 */}
-          {step === 1 && (
+          {currentStep === 1 && (
             <section className="card">
               <div className="section-header">
                 <h2>👨‍👩‍👧‍👦 家庭成员信息</h2>
@@ -414,102 +217,35 @@ export default function Home() {
                 </div>
               </div>
 
+              {/* 显示全局错误 */}
+              {groupedErrors.family && (
+                <div className="global-errors">
+                  {groupedErrors.family.map((error, index) => (
+                    <ErrorMessage key={index} message={error} />
+                  ))}
+                </div>
+              )}
+
               <div className="members">
-                {visibleMembers.map((m) => (
-                  <article className="member" key={m.id}>
-                    <div className="member-head">
-                      <div>
-                        <strong>{m.name}</strong>
-                        <span className="role-badge">
-                          {m.role === "main" ? "主申请人" : m.role === "spouse" ? "配偶" : "其他成员"}
-                        </span>
-                      </div>
-                      {m.role !== "main" && (
-                        <button className="danger" type="button" onClick={() => removeMember(m.id)}>
-                          删除
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="grid four">
-                      <label>
-                        成员称呼
-                        <input
-                          type="text"
-                          value={m.name}
-                          onChange={(e) => updateMember(m.id, { name: e.target.value })}
-                        />
-                      </label>
-
-                      <label>
-                        普通摇号开始年份
-                        <select
-                          value={m.ordinaryStartYear ?? ""}
-                          onChange={(e) => updateMember(m.id, { ordinaryStartYear: e.target.value ? Number(e.target.value) : null })}
-                        >
-                          <option value="">未参与</option>
-                          {getFutureYearOptions().reverse().map(year => (
-                            <option key={year} value={year}>{year}年</option>
-                          ))}
-                        </select>
-                        <span className="hint">
-                          {m.ordinaryStartYear && (() => {
-                            const data = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
-                            return `累计${data.totalRounds}次 = ${data.totalStep}分`;
-                          })()}
-                        </span>
-                      </label>
-
-                      <label>
-                        开始参与时段
-                        <select
-                          value={m.ordinaryStartHalf}
-                          onChange={(e) => updateMember(m.id, { ordinaryStartHalf: e.target.value as Half })}
-                          disabled={!m.ordinaryStartYear}
-                        >
-                          <option value="first">上半年（6月）</option>
-                          <option value="second">下半年（12月）</option>
-                        </select>
-                        <span className="hint">
-                          {m.ordinaryStartYear && (() => {
-                            const data = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
-                            return `累计${data.totalRounds}次 = ${data.totalStep}分`;
-                          })()}
-                        </span>
-                      </label>
-
-                      <label>
-                        新能源轮候开始年份
-                        <select
-                          value={m.queueStartYear ?? ""}
-                          onChange={(e) => updateMember(m.id, { queueStartYear: e.target.value ? Number(e.target.value) : null })}
-                        >
-                          <option value="">未参与</option>
-                          {getFutureYearOptions().reverse().map(year => (
-                            <option key={year} value={year}>{year}年</option>
-                          ))}
-                        </select>
-                        <span className="hint">
-                          {m.queueStartYear ? `轮候 ${calcQueueYears(m.queueStartYear, nowYear)} 年` : ''}
-                        </span>
-                      </label>
-
-                      {m.role === "main" && (
-                        <label>
-                          是否具备C5驾照
-                          <select
-                            value={m.hasC5 ? "yes" : "no"}
-                            onChange={(e) => updateMember(m.id, { hasC5: e.target.value === "yes" })}
-                          >
-                            <option value="no">否</option>
-                            <option value="yes">是</option>
-                          </select>
-                          <span className="hint">主申请人额外+1阶梯</span>
-                        </label>
-                      )}
-                    </div>
-                  </article>
-                ))}
+                {members.map((member) => {
+                  // 计算该成员的相关数据
+                  const memberDetail = result.detail.find(d => d.id === member.id);
+                  
+                  return (
+                    <MemberCard
+                      key={member.id}
+                      member={member}
+                      onUpdate={updateMember}
+                      onRemove={removeMember}
+                      canRemove={member.role !== "main"}
+                      ordinaryRounds={memberDetail?.ordinaryRounds || 0}
+                      ordinaryStep={memberDetail?.ordinaryStep || 0}
+                      queueYears={memberDetail?.queueYears || 0}
+                      yearOptions={futureYearOptions}
+                      validationErrors={validation.errors}
+                    />
+                  );
+                })}
               </div>
 
               <div className="actions" style={{ marginTop: '20px' }}>
@@ -535,27 +271,32 @@ export default function Home() {
 
               <div style={{ marginTop: '20px', padding: '16px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
                 <label style={{ display: 'block' }}>
-                  <strong>📆 家庭申请开始年份</strong>
+                  <strong>📆 家庭申请开始年份 <span className="required">*</span></strong>
                   <select
                     value={familyApplyStartYear ?? ""}
                     onChange={(e) => setFamilyApplyStartYear(e.target.value ? Number(e.target.value) : null)}
                     style={{ marginTop: '8px', width: '200px' }}
+                    className={groupedErrors.familyApplyStartYear ? 'error' : ''}
+                    aria-invalid={!!groupedErrors.familyApplyStartYear}
                   >
                     <option value="">请选择</option>
-                    {getYearOptions().reverse().map(year => (
+                    {[...yearOptions].reverse().map(year => (
                       <option key={year} value={year}>{year}年</option>
                     ))}
                   </select>
                   <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
                     {familyApplyStartYear ? `已申请 ${familyApplyYears} 年，所有成员各+${familyApplyYears}分` : '选择以家庭为单位首次申请的年份'}
                   </span>
+                  {groupedErrors.familyApplyStartYear && (
+                    <ErrorMessage message={groupedErrors.familyApplyStartYear[0]} />
+                  )}
                 </label>
               </div>
             </section>
           )}
 
           {/* 步骤2：计算结果 */}
-          {step === 2 && (
+          {currentStep === 2 && (
             <section className="card result">
               <div className="section-header">
                 <h2>📊 家庭积分计算结果</h2>
@@ -565,303 +306,45 @@ export default function Home() {
                   <span className="progress-step active">2. 查看结果</span>
                 </div>
               </div>
-              {result.ok ? (
+              
+              <ScoreDisplay result={result} />
+              
+              {result.ok && (
                 <>
-                  <div className="score-display">
-                    <div className="score-label">家庭总积分</div>
-                    <div className="score">{result.total}</div>
-                    <div className="score-unit">分</div>
+                  <div className="result-actions">
+                    <button 
+                      type="button" 
+                      onClick={() => setSaveDialogOpen(true)}
+                      className="save-button"
+                    >
+                      💾 保存计算结果
+                    </button>
                   </div>
-
-                  <div className="formula-box">
-                    <h3>🧮 计算公式</h3>
-                    {includeSpouse ? (
-                      <div>
-                        <p className="formula" style={{ marginBottom: '8px' }}>
-                          总积分 = [(主申请人 + 配偶) × 2 + 其他成员之和] × 代际数
-                        </p>
-                        <p className="formula" style={{ fontSize: '14px', color: '#666' }}>
-                          = [({result.detail.find(d => d.role === "main")?.point || 0} + {result.detail.find(d => d.role === "spouse")?.point || 0}) × 2 + {result.detail.filter(d => d.role === "other").map(d => d.point).join(' + ') || '0'}] × {generations} = {result.total}分
-                        </p>
-                      </div>
-                    ) : (
-                      <div>
-                        <p className="formula" style={{ marginBottom: '8px' }}>
-                          总积分 = (主申请人 + 其他成员之和) × 代际数
-                        </p>
-                        <p className="formula" style={{ fontSize: '14px', color: '#666' }}>
-                          = ({result.detail.find(d => d.role === "main")?.point || 0} + {result.detail.filter(d => d.role === "other").map(d => d.point).join(' + ') || '0'}) × {generations} = {result.total}分
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <h3>成员积分明细</h3>
-                  <div className="detail-cards">
-                    {result.detail.map((d) => (
-                      <div className="detail-card" key={d.id}>
-                        <div className="detail-header">
-                          <strong>{d.name}</strong>
-                          <span className="detail-point">{d.point} 分</span>
-                        </div>
-                        <div className="detail-breakdown">
-                          <div className="breakdown-item">
-                            <span>基础分</span>
-                            <span>{d.base}</span>
-                          </div>
-                          {d.ordinaryStep > 0 && (
-                            <>
-                              <div className="breakdown-item">
-                                <span>普通摇号阶梯（共{d.ordinaryRounds}次）</span>
-                                <span>+{d.ordinaryStep}</span>
-                              </div>
-                              {d.pre2021Rounds > 0 && (
-                                <div className="breakdown-item sub">
-                                  <span>└ 2020年前 {d.pre2021Rounds}次</span>
-                                  <span>{d.pre2021Step}分</span>
-                                </div>
-                              )}
-                              {d.post2021Rounds > 0 && (
-                                <div className="breakdown-item sub">
-                                  <span>└ 2021年后 {d.post2021Rounds}次</span>
-                                  <span>{d.post2021Step}分</span>
-                                </div>
-                              )}
-                            </>
-                          )}
-                          {d.c5Extra > 0 && (
-                            <div className="breakdown-item">
-                              <span>C5驾照加分</span>
-                              <span>+{d.c5Extra}</span>
-                            </div>
-                          )}
-                          {d.queueStep > 0 && (
-                            <div className="breakdown-item">
-                              <span>新能源轮候（{d.queueYears}年）</span>
-                              <span>+{d.queueStep}</span>
-                            </div>
-                          )}
-                          {d.familyYears > 0 && (
-                            <div className="breakdown-item">
-                              <span>家庭申请年限</span>
-                              <span>+{d.familyYears}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <h3>📅 未来5年积分预测</h3>
-                  <div className="prediction-box">
-                    <p className="muted small" style={{ marginBottom: '16px' }}>
-                      基于当前规则，假设所有成员继续参与摇号/轮候，预测未来5年家庭总积分变化。
-                    </p>
-                    <table className="policy-table">
-                      <thead>
-                        <tr>
-                          <th>年份</th>
-                          <th>家庭申请年限</th>
-                          {result.detail.map((d) => (
-                            <th key={d.id}>{d.name}</th>
-                          ))}
-                          <th>家庭总积分</th>
-                          <th>较上年增加</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(() => {
-                          // 找到所有成员中最早的开始年份（普通摇号或新能源轮候）
-                          const allStartYears = visibleMembers.flatMap(m => [m.ordinaryStartYear, m.queueStartYear].filter(y => y !== null)) as number[];
-                          const earliestStartYear = allStartYears.length > 0 ? Math.min(...allStartYears) : nowYear;
-                          
-                          // 预测起始年份：取最早开始年份和当前年份中较大的那个
-                          const predictionStartYear = Math.max(earliestStartYear, nowYear);
-                          
-                          return [0, 1, 2, 3, 4, 5].map((yearOffset) => {
-                          const futureYear = predictionStartYear + yearOffset;
-                          const futureFamilyYears = familyApplyStartYear ? Math.max(0, futureYear - familyApplyStartYear) : 0;
-                          
-                          // 计算每个成员未来的积分
-                          const futureDetails = result.detail.map((d) => {
-                            const member = visibleMembers.find(m => m.id === d.id);
-                            if (!member) return { ...d, point: d.point };
-                            
-                            // 判断成员在该年份是否已经开始参与
-                            // 如果普通摇号和新能源轮候都没开始，则该成员不计入
-                            const ordinaryStarted = member.ordinaryStartYear && member.ordinaryStartYear <= futureYear;
-                            const queueStarted = member.queueStartYear && member.queueStartYear <= futureYear;
-                            const memberStarted = ordinaryStarted || queueStarted;
-                            
-                            // 如果成员还没开始参与，返回0分（但保留基础信息）
-                            if (!memberStarted) {
-                              return { ...d, point: 0, ordinaryStep: 0, queueStep: 0, stageTotal: 0, familyYears: 0 };
-                            }
-                            
-                            // 计算未来的普通摇号阶梯分
-                            let futureOrdinaryStep = 0;
-                            if (member.ordinaryStartYear) {
-                              const futureData = calcTotalStepByYearAndHalf(
-                                member.ordinaryStartYear,
-                                member.ordinaryStartHalf,
-                                futureYear
-                              );
-                              futureOrdinaryStep = futureData.totalStep;
-                            }
-                            
-                            // 计算未来的新能源轮候分
-                            let futureQueueStep = 0;
-                            if (member.queueStartYear) {
-                              futureQueueStep = calcQueueYears(member.queueStartYear, futureYear);
-                            }
-                            
-                            // 未来的阶梯（轮候）积分
-                            const futureStageTotal = futureOrdinaryStep + d.c5Extra + futureQueueStep;
-                            
-                            // 未来的个人积分
-                            const futurePoint = d.base + futureStageTotal + futureFamilyYears;
-                            
-                            return { ...d, point: futurePoint };
-                          });
-                          
-                          // 过滤出已经开始参与的成员来计算家庭总积分
-                          const activeFutureDetails = futureDetails.filter(d => d.point > 0);
-                          
-                          // 根据已开始参与的成员动态计算代际数
-                          const futureMemberNames = activeFutureDetails.map(d => d.name.toLowerCase());
-                          const futureHasParent = futureMemberNames.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
-                          const futureHasChild = futureMemberNames.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
-                          
-                          let futureGenerations = 1;
-                          if (futureHasParent && futureHasChild) {
-                            futureGenerations = 3;
-                          } else if (futureHasParent || futureHasChild) {
-                            futureGenerations = 2;
-                          }
-                          
-                          // 计算未来的家庭总积分（只计算已开始参与的成员）
-                          const futureMainPoint = activeFutureDetails.find((d) => d.role === "main")?.point ?? 0;
-                          const futureSpousePoint = activeFutureDetails.find((d) => d.role === "spouse")?.point ?? 0;
-                          const futureOthersPoint = activeFutureDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
-                          
-                          // 判断是否包含配偶（且配偶已开始参与）
-                          const futureIncludeSpouse = activeFutureDetails.some(d => d.role === "spouse");
-                          
-                          const futureTotal = futureIncludeSpouse
-                            ? ((futureMainPoint + futureSpousePoint) * 2 + futureOthersPoint) * futureGenerations
-                            : (futureMainPoint + futureOthersPoint) * futureGenerations;
-                          
-                          // 计算较上年增加（第一年显示为"-"）
-                          let increase = '-';
-                          if (yearOffset > 0) {
-                            const prevYear = predictionStartYear + yearOffset - 1;
-                            const prevFamilyYears = familyApplyStartYear ? Math.max(0, prevYear - familyApplyStartYear) : 0;
-                            
-                            const prevDetails = result.detail.map((d) => {
-                              const member = visibleMembers.find(m => m.id === d.id);
-                              if (!member) return { ...d, point: d.point };
-                              
-                              // 判断成员在上一年是否已经开始参与
-                              const ordinaryStarted = member.ordinaryStartYear && member.ordinaryStartYear <= prevYear;
-                              const queueStarted = member.queueStartYear && member.queueStartYear <= prevYear;
-                              const memberStarted = ordinaryStarted || queueStarted;
-                              
-                              if (!memberStarted) {
-                                return { ...d, point: 0 };
-                              }
-                              
-                              let prevOrdinaryStep = 0;
-                              if (member.ordinaryStartYear) {
-                                const prevData = calcTotalStepByYearAndHalf(
-                                  member.ordinaryStartYear,
-                                  member.ordinaryStartHalf,
-                                  prevYear
-                                );
-                                prevOrdinaryStep = prevData.totalStep;
-                              }
-                              
-                              let prevQueueStep = 0;
-                              if (member.queueStartYear) {
-                                prevQueueStep = calcQueueYears(member.queueStartYear, prevYear);
-                              }
-                              
-                              const prevStageTotal = prevOrdinaryStep + d.c5Extra + prevQueueStep;
-                              const prevPoint = d.base + prevStageTotal + prevFamilyYears;
-                              
-                              return { ...d, point: prevPoint };
-                            });
-                            
-                            const activePrevDetails = prevDetails.filter(d => d.point > 0);
-                            
-                            // 根据上一年已开始参与的成员动态计算代际数
-                            const prevMemberNames = activePrevDetails.map(d => d.name.toLowerCase());
-                            const prevHasParent = prevMemberNames.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
-                            const prevHasChild = prevMemberNames.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
-                            
-                            let prevGenerations = 1;
-                            if (prevHasParent && prevHasChild) {
-                              prevGenerations = 3;
-                            } else if (prevHasParent || prevHasChild) {
-                              prevGenerations = 2;
-                            }
-                            
-                            const prevMainPoint = activePrevDetails.find((d) => d.role === "main")?.point ?? 0;
-                            const prevSpousePoint = activePrevDetails.find((d) => d.role === "spouse")?.point ?? 0;
-                            const prevOthersPoint = activePrevDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
-                            
-                            const prevIncludeSpouse = activePrevDetails.some(d => d.role === "spouse");
-                            
-                            const prevTotal = prevIncludeSpouse
-                              ? ((prevMainPoint + prevSpousePoint) * 2 + prevOthersPoint) * prevGenerations
-                              : (prevMainPoint + prevOthersPoint) * prevGenerations;
-                            
-                            increase = `+${futureTotal - prevTotal}`;
-                          }
-                          
-                          return (
-                            <tr key={yearOffset} style={{ background: yearOffset === 0 && futureYear === nowYear ? '#f0f9ff' : 'transparent' }}>
-                              <td>{futureYear}年{yearOffset === 0 && futureYear === nowYear ? '（当前）' : ''}</td>
-                              <td>{futureFamilyYears}年</td>
-                              {futureDetails.map((d) => (
-                                <td key={d.id}>{d.point}分</td>
-                              ))}
-                              <td><strong>{futureTotal}分</strong></td>
-                              <td>{increase}</td>
-                            </tr>
-                          );
-                        });
-                        })()}
-                      </tbody>
-                    </table>
-                    <div style={{ marginTop: '12px', padding: '12px', background: '#fffbeb', borderRadius: '8px' }}>
-                      <p className="muted small" style={{ margin: 0 }}>
-                        <strong>增长说明：</strong>
-                        <br />• 参与普通摇号的成员：每年2次摇号 = +1阶梯分
-                        <br />• 参与新能源轮候的成员：每满1年 = +1轮候分
-                        <br />• 所有成员：家庭申请每满1年 = 各+1分
-                        <br />• 家庭总积分 = 个人积分之和 × 计算公式 × 代际数
-                        <br />• 注意：家庭申请年限会自动增加，影响所有成员积分
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="disclaimer">
-                    <strong>⚠️ 免责声明</strong>
-                    <p>本计算器仅供参考，最终积分以北京市小客车指标调控管理信息系统官方计算结果为准。政策如有调整，请以官方最新公告为准。</p>
-                  </div>
+                  
+                  <FuturePrediction 
+                    members={members}
+                    familyApplyStartYear={familyApplyStartYear}
+                    currentResult={result}
+                  />
                 </>
-              ) : (
-                <p className="warn">{result.message}</p>
               )}
             </section>
           )}
 
           {/* 导航按钮 */}
           <section className="nav card">
-            <button type="button" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
+            <button 
+              type="button" 
+              onClick={prevStep} 
+              disabled={currentStep === 1}
+            >
               ← 上一步
             </button>
-            <button type="button" onClick={() => setStep((s) => Math.min(2, s + 1))} disabled={step === 2}>
+            <button 
+              type="button" 
+              onClick={handleNextStep} 
+              disabled={currentStep === 2}
+            >
               下一步 →
             </button>
           </section>
@@ -907,109 +390,7 @@ export default function Home() {
         </aside>
       </div>
 
-      {/* 政策说明 */}
-      <section className="card">
-        <h2>📖 政策规则说明</h2>
-        
-        <div className="rule-section">
-          <h3>🔢 普通摇号阶梯分对照表</h3>
-          <div className="table-wrap" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-            <div>
-              <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>2020年12月31日前规则</h4>
-              <table className="policy-table">
-                <thead>
-                  <tr>
-                    <th>累计次数</th>
-                    <th>阶梯分</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td>0次</td><td>0分</td></tr>
-                  <tr><td>1-6次</td><td>1分</td></tr>
-                  <tr><td>7-12次</td><td>2分</td></tr>
-                  <tr><td>13-18次</td><td>3分</td></tr>
-                  <tr><td>19-24次</td><td>4分</td></tr>
-                  <tr><td>25-30次</td><td>5分</td></tr>
-                  <tr><td>31-36次</td><td>6分</td></tr>
-                  <tr><td>37-42次</td><td>7分</td></tr>
-                  <tr><td>43-48次</td><td>8分</td></tr>
-                  <tr><td>49-54次</td><td>9分</td></tr>
-                  <tr><td>55-60次</td><td>10分</td></tr>
-                  <tr><td>61-66次</td><td>11分</td></tr>
-                  <tr><td>67-72次</td><td>12分</td></tr>
-                  <tr><td>73-78次</td><td>13分</td></tr>
-                </tbody>
-              </table>
-              <p className="muted small" style={{ marginTop: 8 }}>
-                截至2020年12月31日，共进行摇号78次
-              </p>
-            </div>
-            <div>
-              <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>2021年1月1日后规则</h4>
-              <table className="policy-table">
-                <thead>
-                  <tr>
-                    <th>累计次数</th>
-                    <th>阶梯分</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr><td>0次</td><td>0分</td></tr>
-                  <tr><td>1-2次</td><td>1分</td></tr>
-                  <tr><td>3-4次</td><td>2分</td></tr>
-                  <tr><td>5-6次</td><td>3分</td></tr>
-                  <tr><td>7-8次</td><td>4分</td></tr>
-                  <tr><td>9-10次</td><td>5分</td></tr>
-                  <tr><td>11-12次</td><td>6分</td></tr>
-                  <tr><td>13-14次</td><td>7分</td></tr>
-                  <tr><td>15-16次</td><td>8分</td></tr>
-                  <tr><td>17-18次</td><td>9分</td></tr>
-                  <tr><td>19-20次</td><td>10分</td></tr>
-                  <tr><td>21-22次</td><td>11分</td></tr>
-                  <tr><td>23-24次</td><td>12分</td></tr>
-                  <tr><td>25次及以上</td><td>每2次+1分（上不封顶）</td></tr>
-                </tbody>
-              </table>
-              <p className="muted small" style={{ marginTop: 8 }}>
-                每2次摇号增加1分，持续累加
-              </p>
-            </div>
-          </div>
-          <p className="muted small" style={{ marginTop: 12 }}>
-            说明：每年2次摇号（6月26日和12月26日）。例如2025年下半年到2026年3月1日，只参加了1次（2025年12月26日）。
-          </p>
-        </div>
-
-        <div className="rule-section">
-          <h3>💡 计算示例</h3>
-          <div className="example-grid">
-            <div className="example-card">
-              <h4>示例1：夫妻+子女（2代）👨‍👩‍👧</h4>
-              <p className="muted small">家庭申请3年</p>
-              <ul className="example-list">
-                <li>主申请人：2+4+3=9分（普通24次）</li>
-                <li>配偶：1+3+3=7分（普通18次）</li>
-                <li>子女：1+2+3=6分（轮候2年）</li>
-              </ul>
-              <p className="example-result">
-                总积分 = [(9+7)×2+6]×2 = <strong>76分</strong>
-              </p>
-            </div>
-
-            <div className="example-card">
-              <h4>示例2：不含配偶（2代）👨‍👧</h4>
-              <p className="muted small">家庭申请2年</p>
-              <ul className="example-list">
-                <li>主申请人：2+5+2=9分（普通30次）</li>
-                <li>父母：1+3+2=6分（普通18次）</li>
-              </ul>
-              <p className="example-result">
-                总积分 = (9+6)×2 = <strong>30分</strong>
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
+      <PolicySection />
     </main>
   );
 }

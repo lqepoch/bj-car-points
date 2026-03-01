@@ -327,7 +327,7 @@ export default function Home() {
       {/* 头部 */}
       <div className="hero card">
         <div className="hero-content">
-          <h1>北京小客车家庭积分计算器</h1>
+          <h1>🚗 北京小客车家庭积分计算器</h1>
           <p className="muted">
             基于官方政策规则自动计算家庭总积分，帮助您了解申请资格和中签概率
           </p>
@@ -356,28 +356,22 @@ export default function Home() {
               🌙
             </button>
           </div>
-          <span className="badge">官方规则</span>
         </div>
       </div>
-
-      {/* 步骤指示器 */}
-      <section className="card stepper">
-        <div className={`step ${step >= 1 ? "on" : ""}`} onClick={() => setStep(1)}>
-          <div className="step-num">1</div>
-          <div className="step-text">成员信息</div>
-        </div>
-        <div className={`step ${step >= 2 ? "on" : ""}`} onClick={() => setStep(2)}>
-          <div className="step-num">2</div>
-          <div className="step-text">计算结果</div>
-        </div>
-      </section>
 
       <div className="workbench">
         <div className="workbench-main">
           {/* 步骤1：成员信息 */}
           {step === 1 && (
             <section className="card">
-              <h2>家庭成员信息</h2>
+              <div className="section-header">
+                <h2>👨‍👩‍👧‍👦 家庭成员信息</h2>
+                <div className="progress-indicator">
+                  <span className="progress-step active">1. 填写信息</span>
+                  <span className="progress-arrow">→</span>
+                  <span className="progress-step">2. 查看结果</span>
+                </div>
+              </div>
 
               <div className="members">
                 {visibleMembers.map((m) => (
@@ -471,14 +465,14 @@ export default function Home() {
               </div>
 
               <div className="actions" style={{ marginTop: '20px' }}>
-                <button type="button" onClick={() => addMember("父母")}>+ 添加父母</button>
-                <button type="button" onClick={() => addMember("子女")}>+ 添加子女</button>
-                <button type="button" onClick={() => addMember("其他成员")}>+ 添加其他</button>
+                <button type="button" onClick={() => addMember("父母")}>👴 添加父母</button>
+                <button type="button" onClick={() => addMember("子女")}>👶 添加子女</button>
+                <button type="button" onClick={() => addMember("其他成员")}>👤 添加其他</button>
               </div>
 
-              <div style={{ marginTop: '24px', padding: '16px', background: '#f0f9ff', borderRadius: '8px' }}>
+              <div style={{ marginTop: '24px', padding: '16px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
                 <label style={{ display: 'block', marginBottom: '12px' }}>
-                  <strong>家庭申请年限（满年）</strong>
+                  <strong>📆 家庭申请年限（满年）</strong>
                   <input
                     type="number"
                     min={0}
@@ -496,7 +490,14 @@ export default function Home() {
           {/* 步骤2：计算结果 */}
           {step === 2 && (
             <section className="card result">
-              <h2>家庭积分计算结果</h2>
+              <div className="section-header">
+                <h2>📊 家庭积分计算结果</h2>
+                <div className="progress-indicator">
+                  <span className="progress-step">1. 填写信息</span>
+                  <span className="progress-arrow">→</span>
+                  <span className="progress-step active">2. 查看结果</span>
+                </div>
+              </div>
               {result.ok ? (
                 <>
                   <div className="score-display">
@@ -506,7 +507,7 @@ export default function Home() {
                   </div>
 
                   <div className="formula-box">
-                    <h3>计算公式</h3>
+                    <h3>🧮 计算公式</h3>
                     {includeSpouse ? (
                       <div>
                         <p className="formula" style={{ marginBottom: '8px' }}>
@@ -584,7 +585,7 @@ export default function Home() {
                     ))}
                   </div>
 
-                  <h3>未来5年积分预测</h3>
+                  <h3>📅 未来5年积分预测</h3>
                   <div className="prediction-box">
                     <p className="muted small" style={{ marginBottom: '16px' }}>
                       基于当前规则，假设所有成员继续参与摇号/轮候，预测未来5年家庭总积分变化。
@@ -715,7 +716,7 @@ export default function Home() {
 
                   <div className="disclaimer">
                     <strong>⚠️ 免责声明</strong>
-                    <p>本计算器仅供参考，最终积分以北京市小客车指标调控管理信息系统官方计算结果为准。</p>
+                    <p>本计算器仅供参考，最终积分以北京市小客车指标调控管理信息系统官方计算结果为准。政策如有调整，请以官方最新公告为准。</p>
                   </div>
                 </>
               ) : (
@@ -737,7 +738,7 @@ export default function Home() {
 
         {/* 侧边栏 */}
         <aside className="card workbench-side">
-          <h3>实时预览</h3>
+          <h3>📈 实时预览</h3>
           {result.ok ? (
             <>
               <div className="preview-score">{result.total} 分</div>
@@ -754,7 +755,7 @@ export default function Home() {
             <p className="muted small">{result.message || "请填写完整信息"}</p>
           )}
 
-          <h4>政策要点</h4>
+          <h4>📋 政策要点</h4>
           <ul className="policy-list">
             <li>主申请人基础分2分，其他成员1分</li>
             <li>普通摇号按次数映射阶梯分</li>
@@ -767,20 +768,20 @@ export default function Home() {
           <a 
             href="https://xkczb.jtw.beijing.gov.cn/bszn/20201230/1609342087846_1.html" 
             target="_blank" 
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="policy-link"
           >
-            查看官方政策 →
+            🔗 查看官方政策文件 →
           </a>
         </aside>
       </div>
 
       {/* 政策说明 */}
       <section className="card">
-        <h2>政策规则说明</h2>
+        <h2>📖 政策规则说明</h2>
         
         <div className="rule-section">
-          <h3>普通摇号阶梯分对照表</h3>
+          <h3>🔢 普通摇号阶梯分对照表</h3>
           <div className="table-wrap" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
               <h4 style={{ textAlign: 'center', marginBottom: '12px' }}>2020年12月31日前规则</h4>
@@ -849,10 +850,10 @@ export default function Home() {
         </div>
 
         <div className="rule-section">
-          <h3>计算示例</h3>
+          <h3>💡 计算示例</h3>
           <div className="example-grid">
             <div className="example-card">
-              <h4>示例1：夫妻+子女（2代）</h4>
+              <h4>示例1：夫妻+子女（2代）👨‍👩‍👧</h4>
               <p className="muted small">家庭申请3年</p>
               <ul className="example-list">
                 <li>主申请人：2+4+3=9分（普通24次）</li>
@@ -865,7 +866,7 @@ export default function Home() {
             </div>
 
             <div className="example-card">
-              <h4>示例2：不含配偶（2代）</h4>
+              <h4>示例2：不含配偶（2代）👨‍👧</h4>
               <p className="muted small">家庭申请2年</p>
               <ul className="example-list">
                 <li>主申请人：2+5+2=9分（普通30次）</li>

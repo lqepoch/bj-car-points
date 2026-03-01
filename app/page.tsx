@@ -37,12 +37,16 @@ function getCurrentHalf(): Half {
 // 计算从开始年份+半年到当前已经参加的摇号次数
 // 每年2次：6月26日（上半年）和12月26日（下半年）
 // 注意：第一次参加算0次，之后每次+1
+// 如果开始年份在未来，返回0（还未开始）
 function calcRoundsByYearAndHalf(
   startYear: number | null,
   startHalf: Half,
   currentYear: number
 ): number {
-  if (!startYear || startYear > currentYear) return 0;
+  if (!startYear) return 0;
+  
+  // 如果开始年份在未来，返回0
+  if (startYear > currentYear) return 0;
   
   const now = new Date();
   const currentMonth = now.getMonth() + 1;
@@ -152,8 +156,10 @@ function calcTotalStepByYearAndHalf(
 }
 
 // 根据开始年份计算轮候年限
+// 如果开始年份在未来，返回0
 function calcQueueYears(startYear: number | null, currentYear: number): number {
-  if (!startYear || startYear > currentYear) return 0;
+  if (!startYear) return 0;
+  if (startYear > currentYear) return 0; // 未来年份，还未开始
   return currentYear - startYear;
 }
 
@@ -173,15 +179,14 @@ function createMember(id: number, role: MemberRole, name: string): Member {
 export default function Home() {
   const [step, setStep] = useState(1);
   const [familyApplyYears, setFamilyApplyYears] = useState(0);
-  const [includeSpouse, setIncludeSpouse] = useState(true);
   const [members, setMembers] = useState<Member[]>([
     createMember(1, "main", "主申请人"),
     createMember(2, "spouse", "配偶"),
   ]);
 
   const visibleMembers = useMemo(
-    () => members.filter((m) => (includeSpouse || m.role !== "spouse")),
-    [members, includeSpouse]
+    () => members,
+    [members]
   );
 
   // 自动计算代际数：根据成员关系判断
@@ -193,6 +198,11 @@ export default function Home() {
     if (hasParent && hasChild) return 3; // 三代：父母+自己+子女
     if (hasParent || hasChild) return 2; // 两代：父母+自己 或 自己+子女
     return 1; // 一代：只有夫妻
+  }, [visibleMembers]);
+
+  // 自动判断是否包含配偶
+  const includeSpouse = useMemo(() => {
+    return visibleMembers.some(m => m.role === "spouse");
   }, [visibleMembers]);
 
   const result = useMemo(() => {
@@ -304,45 +314,6 @@ export default function Home() {
           {step === 1 && (
             <section className="card">
               <h2>家庭成员信息</h2>
-              
-              {/* 家庭基础参数 */}
-              <div className="grid three" style={{ marginBottom: '24px' }}>
-                <label>
-                  家庭申请年限（满年）
-                  <input
-                    type="number"
-                    min={0}
-                    value={familyApplyYears}
-                    onChange={(e) => setFamilyApplyYears(Number(e.target.value) || 0)}
-                    placeholder="例如：3"
-                  />
-                  <span className="hint">每满一年，所有成员各+1分</span>
-                </label>
-
-                <label>
-                  是否包含配偶
-                  <select
-                    value={includeSpouse ? "yes" : "no"}
-                    onChange={(e) => setIncludeSpouse(e.target.value === "yes")}
-                  >
-                    <option value="yes">包含配偶</option>
-                    <option value="no">不包含配偶</option>
-                  </select>
-                  <span className="hint">影响总积分计算公式</span>
-                </label>
-
-                <label>
-                  家庭代际数（自动计算）
-                  <input type="text" value={`${generations}代`} disabled style={{ background: '#f5f5f5' }} />
-                  <span className="hint">根据成员关系自动判断</span>
-                </label>
-              </div>
-
-              <div className="actions">
-                <button type="button" onClick={() => addMember("父母")}>+ 添加父母</button>
-                <button type="button" onClick={() => addMember("子女")}>+ 添加子女</button>
-                <button type="button" onClick={() => addMember("其他成员")}>+ 添加其他</button>
-              </div>
 
               <div className="members">
                 {visibleMembers.map((m) => (
@@ -373,17 +344,15 @@ export default function Home() {
 
                       <label>
                         普通摇号开始年份
-                        <select
+                        <input
+                          type="number"
+                          min={START_YEAR}
+                          max={nowYear + 30}
                           value={m.ordinaryStartYear ?? ""}
                           onChange={(e) => updateMember(m.id, { ordinaryStartYear: e.target.value ? Number(e.target.value) : null })}
-                        >
-                          <option value="">未参与</option>
-                          {getYearOptions().map((year) => (
-                            <option key={year} value={year}>
-                              {year}年
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="例如：2021"
+                        />
+                        <span className="hint">未参与请留空，可输入未来年份</span>
                       </label>
 
                       <label>
@@ -399,26 +368,23 @@ export default function Home() {
                         <span className="hint">
                           {m.ordinaryStartYear && (() => {
                             const data = calcTotalStepByYearAndHalf(m.ordinaryStartYear, m.ordinaryStartHalf, nowYear);
-                            return `累计${data.totalRounds}次（2020前${data.pre2021Rounds}次=${data.pre2021Step}分 + 2021后${data.post2021Rounds}次=${data.post2021Step}分）`;
+                            return `累计${data.totalRounds}次 = ${data.totalStep}分`;
                           })()}
                         </span>
                       </label>
 
                       <label>
                         新能源轮候开始年份
-                        <select
+                        <input
+                          type="number"
+                          min={START_YEAR}
+                          max={nowYear + 30}
                           value={m.queueStartYear ?? ""}
                           onChange={(e) => updateMember(m.id, { queueStartYear: e.target.value ? Number(e.target.value) : null })}
-                        >
-                          <option value="">未参与</option>
-                          {getYearOptions().map((year) => (
-                            <option key={year} value={year}>
-                              {year}年
-                            </option>
-                          ))}
-                        </select>
+                          placeholder="例如：2023"
+                        />
                         <span className="hint">
-                          {m.queueStartYear && `轮候 ${calcQueueYears(m.queueStartYear, nowYear)} 年`}
+                          {m.queueStartYear ? `轮候 ${calcQueueYears(m.queueStartYear, nowYear)} 年` : '未参与请留空，可输入未来年份'}
                         </span>
                       </label>
 
@@ -438,6 +404,27 @@ export default function Home() {
                     </div>
                   </article>
                 ))}
+              </div>
+
+              <div className="actions" style={{ marginTop: '20px' }}>
+                <button type="button" onClick={() => addMember("父母")}>+ 添加父母</button>
+                <button type="button" onClick={() => addMember("子女")}>+ 添加子女</button>
+                <button type="button" onClick={() => addMember("其他成员")}>+ 添加其他</button>
+              </div>
+
+              <div style={{ marginTop: '24px', padding: '16px', background: '#f0f9ff', borderRadius: '8px' }}>
+                <label style={{ display: 'block', marginBottom: '12px' }}>
+                  <strong>家庭申请年限（满年）</strong>
+                  <input
+                    type="number"
+                    min={0}
+                    value={familyApplyYears}
+                    onChange={(e) => setFamilyApplyYears(Number(e.target.value) || 0)}
+                    placeholder="例如：3"
+                    style={{ marginTop: '8px', width: '200px' }}
+                  />
+                  <span className="hint" style={{ display: 'block', marginTop: '4px' }}>每满一年，所有成员各+1分</span>
+                </label>
               </div>
             </section>
           )}

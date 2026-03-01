@@ -36,6 +36,7 @@ function getCurrentHalf(): Half {
 
 // 计算从开始年份+半年到当前已经参加的摇号次数
 // 每年2次：6月26日（上半年）和12月26日（下半年）
+// 注意：第一次参加算0次，之后每次+1
 function calcRoundsByYearAndHalf(
   startYear: number | null,
   startHalf: Half,
@@ -75,7 +76,8 @@ function calcRoundsByYearAndHalf(
     }
   }
   
-  return rounds;
+  // 第一次参加算0次，所以总次数要减1（如果有参加的话）
+  return rounds > 0 ? rounds - 1 : 0;
 }
 
 // 2020年前规则：1-6次=1分，7-12次=2分...（每6次一档）
@@ -171,7 +173,6 @@ function createMember(id: number, role: MemberRole, name: string): Member {
 export default function Home() {
   const [step, setStep] = useState(1);
   const [familyApplyYears, setFamilyApplyYears] = useState(0);
-  const [generations, setGenerations] = useState(2);
   const [includeSpouse, setIncludeSpouse] = useState(true);
   const [members, setMembers] = useState<Member[]>([
     createMember(1, "main", "主申请人"),
@@ -179,9 +180,20 @@ export default function Home() {
   ]);
 
   const visibleMembers = useMemo(
-    () => members.filter((m) => includeSpouse || m.role !== "spouse"),
+    () => members.filter((m) => (includeSpouse || m.role !== "spouse")),
     [members, includeSpouse]
   );
+
+  // 自动计算代际数：根据成员关系判断
+  const generations = useMemo(() => {
+    const roles = visibleMembers.map(m => m.name.toLowerCase());
+    const hasParent = roles.some(r => r.includes('父') || r.includes('母') || r.includes('parent'));
+    const hasChild = roles.some(r => r.includes('子') || r.includes('女') || r.includes('child') || r.includes('孩'));
+    
+    if (hasParent && hasChild) return 3; // 三代：父母+自己+子女
+    if (hasParent || hasChild) return 2; // 两代：父母+自己 或 自己+子女
+    return 1; // 一代：只有夫妻
+  }, [visibleMembers]);
 
   const result = useMemo(() => {
     const main = visibleMembers.find((m) => m.role === "main");
@@ -278,25 +290,23 @@ export default function Home() {
       <section className="card stepper">
         <div className={`step ${step >= 1 ? "on" : ""}`} onClick={() => setStep(1)}>
           <div className="step-num">1</div>
-          <div className="step-text">家庭参数</div>
+          <div className="step-text">成员信息</div>
         </div>
         <div className={`step ${step >= 2 ? "on" : ""}`} onClick={() => setStep(2)}>
           <div className="step-num">2</div>
-          <div className="step-text">成员信息</div>
-        </div>
-        <div className={`step ${step >= 3 ? "on" : ""}`} onClick={() => setStep(3)}>
-          <div className="step-num">3</div>
           <div className="step-text">计算结果</div>
         </div>
       </section>
 
       <div className="workbench">
         <div className="workbench-main">
-          {/* 步骤1：家庭参数 */}
+          {/* 步骤1：成员信息 */}
           {step === 1 && (
             <section className="card">
-              <h2>家庭基础参数</h2>
-              <div className="grid three">
+              <h2>家庭成员信息</h2>
+              
+              {/* 家庭基础参数 */}
+              <div className="grid three" style={{ marginBottom: '24px' }}>
                 <label>
                   家庭申请年限（满年）
                   <input
@@ -310,16 +320,6 @@ export default function Home() {
                 </label>
 
                 <label>
-                  家庭代际数
-                  <select value={generations} onChange={(e) => setGenerations(Number(e.target.value))}>
-                    <option value={1}>1代</option>
-                    <option value={2}>2代</option>
-                    <option value={3}>3代（最多）</option>
-                  </select>
-                  <span className="hint">家庭中包含几代人</span>
-                </label>
-
-                <label>
                   是否包含配偶
                   <select
                     value={includeSpouse ? "yes" : "no"}
@@ -330,14 +330,14 @@ export default function Home() {
                   </select>
                   <span className="hint">影响总积分计算公式</span>
                 </label>
-              </div>
-            </section>
-          )}
 
-          {/* 步骤2：成员信息 */}
-          {step === 2 && (
-            <section className="card">
-              <h2>成员信息录入</h2>
+                <label>
+                  家庭代际数（自动计算）
+                  <input type="text" value={`${generations}代`} disabled style={{ background: '#f5f5f5' }} />
+                  <span className="hint">根据成员关系自动判断</span>
+                </label>
+              </div>
+
               <div className="actions">
                 <button type="button" onClick={() => addMember("父母")}>+ 添加父母</button>
                 <button type="button" onClick={() => addMember("子女")}>+ 添加子女</button>
@@ -442,8 +442,8 @@ export default function Home() {
             </section>
           )}
 
-          {/* 步骤3：计算结果 */}
-          {step === 3 && (
+          {/* 步骤2：计算结果 */}
+          {step === 2 && (
             <section className="card result">
               <h2>家庭积分计算结果</h2>
               {result.ok ? (
@@ -539,7 +539,7 @@ export default function Home() {
             <button type="button" onClick={() => setStep((s) => Math.max(1, s - 1))} disabled={step === 1}>
               ← 上一步
             </button>
-            <button type="button" onClick={() => setStep((s) => Math.min(3, s + 1))} disabled={step === 3}>
+            <button type="button" onClick={() => setStep((s) => Math.min(2, s + 1))} disabled={step === 2}>
               下一步 →
             </button>
           </section>

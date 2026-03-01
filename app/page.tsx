@@ -523,6 +523,82 @@ export default function Home() {
                     ))}
                   </div>
 
+                  <h3>未来5年积分预测</h3>
+                  <div className="prediction-box">
+                    <p className="muted small" style={{ marginBottom: '16px' }}>
+                      基于当前规则，假设所有成员继续参与摇号/轮候，预测未来5年家庭总积分变化
+                    </p>
+                    <table className="policy-table">
+                      <thead>
+                        <tr>
+                          <th>年份</th>
+                          <th>家庭申请年限</th>
+                          {result.detail.map((d) => (
+                            <th key={d.id}>{d.name}</th>
+                          ))}
+                          <th>家庭总积分</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[0, 1, 2, 3, 4, 5].map((yearOffset) => {
+                          const futureYear = nowYear + yearOffset;
+                          const futureFamilyYears = familyApplyYears + yearOffset;
+                          
+                          // 计算每个成员未来的积分
+                          const futureDetails = result.detail.map((d) => {
+                            const member = visibleMembers.find(m => m.id === d.id);
+                            if (!member) return { ...d, point: d.point };
+                            
+                            // 计算未来的普通摇号阶梯分
+                            let futureOrdinaryStep = d.ordinaryStep;
+                            if (member.ordinaryStartYear) {
+                              const futureData = calcTotalStepByYearAndHalf(
+                                member.ordinaryStartYear,
+                                member.ordinaryStartHalf,
+                                futureYear
+                              );
+                              futureOrdinaryStep = futureData.totalStep;
+                            }
+                            
+                            // 计算未来的新能源轮候分
+                            let futureQueueStep = d.queueStep;
+                            if (member.queueStartYear) {
+                              futureQueueStep = calcQueueYears(member.queueStartYear, futureYear);
+                            }
+                            
+                            // 未来的阶梯（轮候）积分
+                            const futureStageTotal = futureOrdinaryStep + d.c5Extra + futureQueueStep;
+                            
+                            // 未来的个人积分
+                            const futurePoint = d.base + futureStageTotal + futureFamilyYears;
+                            
+                            return { ...d, point: futurePoint };
+                          });
+                          
+                          // 计算未来的家庭总积分
+                          const futureMainPoint = futureDetails.find((d) => d.role === "main")?.point ?? 0;
+                          const futureSpousePoint = futureDetails.find((d) => d.role === "spouse")?.point ?? 0;
+                          const futureOthersPoint = futureDetails.filter((d) => d.role === "other").reduce((sum, d) => sum + d.point, 0);
+                          
+                          const futureTotal = includeSpouse
+                            ? ((futureMainPoint + futureSpousePoint) * 2 + futureOthersPoint) * generations
+                            : (futureMainPoint + futureOthersPoint) * generations;
+                          
+                          return (
+                            <tr key={yearOffset} style={{ background: yearOffset === 0 ? '#f0f9ff' : 'transparent' }}>
+                              <td>{futureYear}年{yearOffset === 0 ? '（当前）' : ''}</td>
+                              <td>{futureFamilyYears}年</td>
+                              {futureDetails.map((d) => (
+                                <td key={d.id}>{d.point}分</td>
+                              ))}
+                              <td><strong>{futureTotal}分</strong></td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
                   <div className="disclaimer">
                     <strong>⚠️ 免责声明</strong>
                     <p>本计算器仅供参考，最终积分以北京市小客车指标调控管理信息系统官方计算结果为准。</p>

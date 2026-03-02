@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useScoreCalculation } from './hooks/useScoreCalculation';
-import { useTheme, useFamilyMembers, useFamilyApplyYear, useSteps, useValidation, useCalculationHistory } from './store/useAppStore';
+import { useStore, initializeTheme } from './store/useStore';
 import { validateAll, groupErrorsByField } from './utils/validation';
 import MemberCard from './components/MemberCard';
 import ScoreDisplay from './components/ScoreDisplay';
@@ -34,16 +34,30 @@ function getFutureYearOptions(): number[] {
 }
 
 export default function Home() {
-  const { theme, setTheme } = useTheme();
-  const { currentStep, setCurrentStep, nextStep, prevStep } = useSteps();
-  const { members, updateMember, addMember, removeMember } = useFamilyMembers();
-  const { familyApplyStartYear, setFamilyApplyStartYear } = useFamilyApplyYear();
-  const { errors, setErrors, clearErrors } = useValidation();
-  const { saveCalculation } = useCalculationHistory();
+  // 使用统一的 Zustand store
+  const theme = useStore((state) => state.theme);
+  const setTheme = useStore((state) => state.setTheme);
+  const currentStep = useStore((state) => state.currentStep);
+  const nextStep = useStore((state) => state.nextStep);
+  const prevStep = useStore((state) => state.prevStep);
+  const members = useStore((state) => state.members);
+  const updateMember = useStore((state) => state.updateMember);
+  const addMember = useStore((state) => state.addMember);
+  const removeMember = useStore((state) => state.removeMember);
+  const familyApplyStartYear = useStore((state) => state.familyApplyStartYear);
+  const setFamilyApplyStartYear = useStore((state) => state.setFamilyApplyStartYear);
+  const setErrors = useStore((state) => state.setErrors);
+  const clearErrors = useStore((state) => state.clearErrors);
+  const saveCalculation = useStore((state) => state.saveCalculation);
   
   const [showHistory, setShowHistory] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
+  
+  // 初始化主题
+  useEffect(() => {
+    initializeTheme();
+  }, []);
 
   const result = useScoreCalculation(members, familyApplyStartYear);
   const yearOptions = useMemo(() => getYearOptions(), []);

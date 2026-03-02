@@ -131,28 +131,15 @@ export function useFamilyApplyYear() {
     return stored?.familyApplyStartYear || null;
   });
 
-  const [familyApplyStartHalf, setFamilyApplyStartHalfState] = useState<Half>(() => {
-    const stored = loadFromStorage();
-    return stored?.familyApplyStartHalf || "first";
-  });
-
   const setFamilyApplyStartYear = useCallback((year: number | null) => {
     setFamilyApplyStartYearState(year);
     const stored = loadFromStorage() || {};
     saveToStorage({ ...stored, familyApplyStartYear: year });
   }, []);
 
-  const setFamilyApplyStartHalf = useCallback((half: Half) => {
-    setFamilyApplyStartHalfState(half);
-    const stored = loadFromStorage() || {};
-    saveToStorage({ ...stored, familyApplyStartHalf: half });
-  }, []);
-
   return {
     familyApplyStartYear,
-    setFamilyApplyStartYear,
-    familyApplyStartHalf,
-    setFamilyApplyStartHalf
+    setFamilyApplyStartYear
   };
 }
 

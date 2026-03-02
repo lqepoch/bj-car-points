@@ -4,7 +4,6 @@ import { useState, useMemo, useCallback } from "react";
 import { useScoreCalculation } from './hooks/useScoreCalculation';
 import { useTheme, useFamilyMembers, useFamilyApplyYear, useSteps, useValidation, useCalculationHistory } from './store/useAppStore';
 import { validateAll, groupErrorsByField } from './utils/validation';
-import { Half } from './types';
 import MemberCard from './components/MemberCard';
 import ScoreDisplay from './components/ScoreDisplay';
 import FuturePrediction from './components/FuturePrediction';
@@ -38,7 +37,7 @@ export default function Home() {
   const { theme, setTheme } = useTheme();
   const { currentStep, setCurrentStep, nextStep, prevStep } = useSteps();
   const { members, updateMember, addMember, removeMember } = useFamilyMembers();
-  const { familyApplyStartYear, setFamilyApplyStartYear, familyApplyStartHalf, setFamilyApplyStartHalf } = useFamilyApplyYear();
+  const { familyApplyStartYear, setFamilyApplyStartYear } = useFamilyApplyYear();
   const { errors, setErrors, clearErrors } = useValidation();
   const { saveCalculation } = useCalculationHistory();
   
@@ -83,11 +82,11 @@ export default function Home() {
   const handleSaveCalculation = useCallback(() => {
     if (result.ok) {
       const name = saveName.trim() || `计算记录 ${new Date().toLocaleString()}`;
-      saveCalculation(members, familyApplyStartYear, familyApplyStartHalf, result.total, name);
+      saveCalculation(members, familyApplyStartYear, "first", result.total, name);
       setSaveDialogOpen(false);
       setSaveName("");
     }
-  }, [result, members, familyApplyStartYear, familyApplyStartHalf, saveName, saveCalculation]);
+  }, [result, members, familyApplyStartYear, saveName, saveCalculation]);
 
   // 加载历史记录
   const handleLoadCalculation = useCallback((historyMembers: any[], historyFamilyYear: number | null) => {
@@ -387,45 +386,25 @@ export default function Home() {
                     <line x1="8" y1="2" x2="8" y2="6"/>
                     <line x1="3" y1="10" x2="21" y2="10"/>
                   </svg>
-                  <strong style={{ color: 'var(--brand)' }}>家庭申请信息 <span className="required">*</span></strong>
+                  <strong style={{ color: 'var(--brand)' }}>家庭申请开始年份 <span className="required">*</span></strong>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
-                  <label style={{ display: 'block' }}>
-                    <span style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>申请开始年份</span>
-                    <select
-                      value={familyApplyStartYear ?? ""}
-                      onChange={(e) => setFamilyApplyStartYear(e.target.value ? Number(e.target.value) : null)}
-                      style={{ width: '100%' }}
-                      className={groupedErrors.familyApplyStartYear ? 'error' : ''}
-                      aria-invalid={!!groupedErrors.familyApplyStartYear}
-                    >
-                      <option value="">请选择</option>
-                      {[...yearOptions].reverse().map(year => (
-                        <option key={year} value={year}>{year}年</option>
-                      ))}
-                    </select>
-                    {groupedErrors.familyApplyStartYear && (
-                      <ErrorMessage message={groupedErrors.familyApplyStartYear[0]} />
-                    )}
-                  </label>
-
-                  <label style={{ display: 'block' }}>
-                    <span style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>申请开始时段</span>
-                    <select
-                      value={familyApplyStartHalf}
-                      onChange={(e) => setFamilyApplyStartHalf(e.target.value as Half)}
-                      disabled={!familyApplyStartYear}
-                      style={{ width: '100%' }}
-                      aria-label="选择家庭申请开始时段"
-                    >
-                      <option value="first">上半年（6月前）</option>
-                      <option value="second">下半年（6月后）</option>
-                    </select>
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                      此选项不影响积分计算，仅用于记录
-                    </span>
-                  </label>
+                <div>
+                  <select
+                    value={familyApplyStartYear ?? ""}
+                    onChange={(e) => setFamilyApplyStartYear(e.target.value ? Number(e.target.value) : null)}
+                    style={{ width: '100%', maxWidth: '300px' }}
+                    className={groupedErrors.familyApplyStartYear ? 'error' : ''}
+                    aria-invalid={!!groupedErrors.familyApplyStartYear}
+                  >
+                    <option value="">请选择</option>
+                    {[...yearOptions].reverse().map(year => (
+                      <option key={year} value={year}>{year}年</option>
+                    ))}
+                  </select>
+                  {groupedErrors.familyApplyStartYear && (
+                    <ErrorMessage message={groupedErrors.familyApplyStartYear[0]} />
+                  )}
                 </div>
 
                 <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px' }}>

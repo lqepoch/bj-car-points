@@ -105,10 +105,15 @@ export function useFamilyMembers() {
     setMembers(prev => prev.map(m => m.id === id ? { ...m, ...patch } : m));
   }, []);
 
-  const addMember = useCallback((name: string) => {
+  const addMember = useCallback((roleType: string) => {
     setMembers(prev => {
       const nextId = Math.max(...prev.map(m => m.id)) + 1;
-      return [...prev, createMember(nextId, "other", name)];
+      
+      // 计算同类型成员的数量，用于编号
+      const sameTypeCount = prev.filter(m => m.name.includes(roleType)).length;
+      const memberName = `${roleType}${sameTypeCount + 1}`;
+      
+      return [...prev, createMember(nextId, "other", memberName)];
     });
   }, []);
 

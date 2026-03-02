@@ -354,13 +354,6 @@ export default function Home() {
                   </svg>
                   添加子女
                 </button>
-                <button type="button" onClick={() => addMember("其他成员")} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  添加其他
-                </button>
               </div>
 
               <div style={{ marginTop: '20px', padding: '16px', background: '#e0f2fe', borderRadius: '12px', border: '2px solid #0284c7' }}>

@@ -1902,3 +1902,18 @@ button.save-button {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.1);
 }
+
+/* 修复单个字段时的宽度问题 */
+.form-row:has(.form-field:only-child) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.form-row:has(.form-field:only-child) .form-field {
+  grid-column: 1;
+}
+
+/* 确保两个字段时正常显示 */
+.form-row .form-field:first-child:nth-last-child(2),
+.form-row .form-field:first-child:nth-last-child(2) ~ .form-field {
+  grid-column: auto;
+}

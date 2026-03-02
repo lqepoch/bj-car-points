@@ -39,3 +39,9 @@ export type CalculationResult = {
   includeSpouse: boolean;
   generations: number;
 };
+
+// 家庭申请信息类型
+export type FamilyApplication = {
+  startYear: number | null;
+  startHalf: Half;
+};

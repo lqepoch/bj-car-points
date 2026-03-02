@@ -4,6 +4,7 @@ import { useState, useMemo, useCallback } from "react";
 import { useScoreCalculation } from './hooks/useScoreCalculation';
 import { useTheme, useFamilyMembers, useFamilyApplyYear, useSteps, useValidation, useCalculationHistory } from './store/useAppStore';
 import { validateAll, groupErrorsByField } from './utils/validation';
+import { Half } from './types';
 import MemberCard from './components/MemberCard';
 import ScoreDisplay from './components/ScoreDisplay';
 import FuturePrediction from './components/FuturePrediction';
@@ -37,7 +38,7 @@ export default function Home() {
   const { theme, setTheme } = useTheme();
   const { currentStep, setCurrentStep, nextStep, prevStep } = useSteps();
   const { members, updateMember, addMember, removeMember } = useFamilyMembers();
-  const { familyApplyStartYear, setFamilyApplyStartYear } = useFamilyApplyYear();
+  const { familyApplyStartYear, setFamilyApplyStartYear, familyApplyStartHalf, setFamilyApplyStartHalf } = useFamilyApplyYear();
   const { errors, setErrors, clearErrors } = useValidation();
   const { saveCalculation } = useCalculationHistory();
   
@@ -82,11 +83,11 @@ export default function Home() {
   const handleSaveCalculation = useCallback(() => {
     if (result.ok) {
       const name = saveName.trim() || `计算记录 ${new Date().toLocaleString()}`;
-      saveCalculation(members, familyApplyStartYear, result.total, name);
+      saveCalculation(members, familyApplyStartYear, familyApplyStartHalf, result.total, name);
       setSaveDialogOpen(false);
       setSaveName("");
     }
-  }, [result, members, familyApplyStartYear, saveName, saveCalculation]);
+  }, [result, members, familyApplyStartYear, familyApplyStartHalf, saveName, saveCalculation]);
 
   // 加载历史记录
   const handleLoadCalculation = useCallback((historyMembers: any[], historyFamilyYear: number | null) => {
@@ -339,10 +340,28 @@ export default function Home() {
                 })}
               </div>
 
-              <div className="actions" style={{ marginTop: '20px' }}>
-                <button type="button" onClick={() => addMember("父母")}>👴 添加父母</button>
-                <button type="button" onClick={() => addMember("子女")}>👶 添加子女</button>
-                <button type="button" onClick={() => addMember("其他成员")}>👤 添加其他</button>
+              <div className="actions" style={{ marginTop: '20px', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <button type="button" onClick={() => addMember("父母")} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  添加父母
+                </button>
+                <button type="button" onClick={() => addMember("子女")} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  添加子女
+                </button>
+                <button type="button" onClick={() => addMember("其他成员")} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  添加其他
+                </button>
               </div>
 
               <div style={{ marginTop: '20px', padding: '16px', background: '#e0f2fe', borderRadius: '12px', border: '2px solid #0284c7' }}>
@@ -360,28 +379,77 @@ export default function Home() {
                 </div>
               </div>
 
-              <div style={{ marginTop: '20px', padding: '16px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
-                <label style={{ display: 'block' }}>
-                  <strong>📆 家庭申请开始年份 <span className="required">*</span></strong>
-                  <select
-                    value={familyApplyStartYear ?? ""}
-                    onChange={(e) => setFamilyApplyStartYear(e.target.value ? Number(e.target.value) : null)}
-                    style={{ marginTop: '8px', width: '200px' }}
-                    className={groupedErrors.familyApplyStartYear ? 'error' : ''}
-                    aria-invalid={!!groupedErrors.familyApplyStartYear}
-                  >
-                    <option value="">请选择</option>
-                    {[...yearOptions].reverse().map(year => (
-                      <option key={year} value={year}>{year}年</option>
-                    ))}
-                  </select>
-                  <span className="hint" style={{ display: 'block', marginTop: '4px' }}>
-                    {familyApplyStartYear ? `已申请 ${familyApplyYears} 年，所有成员各+${familyApplyYears}分` : '选择以家庭为单位首次申请的年份'}
+              <div style={{ marginTop: '20px', padding: '20px', background: 'var(--brand-light)', borderRadius: '12px', border: '2px solid var(--brand)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', marginBottom: '16px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '8px', color: 'var(--brand)' }}>
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                  <strong style={{ color: 'var(--brand)' }}>家庭申请信息 <span className="required">*</span></strong>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', alignItems: 'start' }}>
+                  <label style={{ display: 'block' }}>
+                    <span style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>申请开始年份</span>
+                    <select
+                      value={familyApplyStartYear ?? ""}
+                      onChange={(e) => setFamilyApplyStartYear(e.target.value ? Number(e.target.value) : null)}
+                      style={{ width: '100%' }}
+                      className={groupedErrors.familyApplyStartYear ? 'error' : ''}
+                      aria-invalid={!!groupedErrors.familyApplyStartYear}
+                    >
+                      <option value="">请选择</option>
+                      {[...yearOptions].reverse().map(year => (
+                        <option key={year} value={year}>{year}年</option>
+                      ))}
+                    </select>
+                    {groupedErrors.familyApplyStartYear && (
+                      <ErrorMessage message={groupedErrors.familyApplyStartYear[0]} />
+                    )}
+                  </label>
+
+                  <label style={{ display: 'block' }}>
+                    <span style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>申请开始时段</span>
+                    <select
+                      value={familyApplyStartHalf}
+                      onChange={(e) => setFamilyApplyStartHalf(e.target.value as Half)}
+                      disabled={!familyApplyStartYear}
+                      style={{ width: '100%' }}
+                      aria-label="选择家庭申请开始时段"
+                    >
+                      <option value="first">上半年（6月前）</option>
+                      <option value="second">下半年（6月后）</option>
+                    </select>
+                    <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                      此选项不影响积分计算，仅用于记录
+                    </span>
+                  </label>
+                </div>
+
+                <div style={{ marginTop: '12px', padding: '12px', background: 'rgba(255,255,255,0.7)', borderRadius: '8px' }}>
+                  <span style={{ fontSize: '14px', color: 'var(--text)' }}>
+                    {familyApplyStartYear ? (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                          <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+                          <polyline points="17 6 23 6 23 12"/>
+                        </svg>
+                        已申请 <strong>{familyApplyYears}</strong> 年，所有成员各+<strong>{familyApplyYears}</strong>分
+                      </>
+                    ) : (
+                      <>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginRight: '6px', verticalAlign: 'middle' }}>
+                          <circle cx="12" cy="12" r="10"/>
+                          <line x1="12" y1="16" x2="12" y2="12"/>
+                          <line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>
+                        请选择以家庭为单位首次申请的年份
+                      </>
+                    )}
                   </span>
-                  {groupedErrors.familyApplyStartYear && (
-                    <ErrorMessage message={groupedErrors.familyApplyStartYear[0]} />
-                  )}
-                </label>
+                </div>
               </div>
             </section>
           )}

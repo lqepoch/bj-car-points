@@ -8,6 +8,7 @@ interface CalculationHistory {
   timestamp: number;
   members: Member[];
   familyApplyStartYear: number | null;
+  familyApplyStartHalf: Half;
   totalScore: number;
   name?: string;
 }
@@ -130,15 +131,28 @@ export function useFamilyApplyYear() {
     return stored?.familyApplyStartYear || null;
   });
 
+  const [familyApplyStartHalf, setFamilyApplyStartHalfState] = useState<Half>(() => {
+    const stored = loadFromStorage();
+    return stored?.familyApplyStartHalf || "first";
+  });
+
   const setFamilyApplyStartYear = useCallback((year: number | null) => {
     setFamilyApplyStartYearState(year);
     const stored = loadFromStorage() || {};
     saveToStorage({ ...stored, familyApplyStartYear: year });
   }, []);
 
+  const setFamilyApplyStartHalf = useCallback((half: Half) => {
+    setFamilyApplyStartHalfState(half);
+    const stored = loadFromStorage() || {};
+    saveToStorage({ ...stored, familyApplyStartHalf: half });
+  }, []);
+
   return {
     familyApplyStartYear,
-    setFamilyApplyStartYear
+    setFamilyApplyStartYear,
+    familyApplyStartHalf,
+    setFamilyApplyStartHalf
   };
 }
 
@@ -206,7 +220,8 @@ export function useCalculationHistory() {
 
   const saveCalculation = useCallback((
     members: Member[], 
-    familyApplyStartYear: number | null, 
+    familyApplyStartYear: number | null,
+    familyApplyStartHalf: Half,
     totalScore: number, 
     name?: string
   ) => {
@@ -215,6 +230,7 @@ export function useCalculationHistory() {
       timestamp: Date.now(),
       members: JSON.parse(JSON.stringify(members)), // 深拷贝
       familyApplyStartYear,
+      familyApplyStartHalf,
       totalScore,
       name: name || `计算记录 ${new Date().toLocaleString()}`
     };

@@ -1749,3 +1749,156 @@ button.save-button {
     max-height: 80vh;
   }
 }
+
+/* 新的表单布局样式 */
+.member-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+.form-row:has(.form-field:nth-child(2)) {
+  grid-template-columns: 1fr 1fr;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-label {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--text);
+  gap: 6px;
+}
+
+.field-label svg {
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.field-error {
+  margin-top: 4px;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .form-row:has(.form-field:nth-child(2)) {
+    grid-template-columns: 1fr;
+  }
+  
+  .field-label {
+    font-size: 13px;
+  }
+}
+
+/* 改进的成员卡片样式 */
+.member {
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+}
+
+.member:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand-light);
+  box-shadow: var(--shadow-md);
+}
+
+.member-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.member-head > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.member-head strong {
+  font-size: 16px;
+  color: var(--text);
+}
+
+.role-badge {
+  background: var(--brand-light);
+  color: var(--brand);
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* 输入框和选择框样式优化 */
+.form-field input,
+.form-field select {
+  padding: 10px 12px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  font-size: 14px;
+  background: var(--card);
+  color: var(--text);
+  transition: border-color 0.2s ease;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: none;
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+}
+
+.form-field input:disabled,
+.form-field select:disabled {
+  background: var(--bg);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.form-field input.error,
+.form-field select.error {
+  border-color: var(--danger);
+}
+
+/* 深色主题适配 */
+[data-theme="dark"] .role-badge {
+  background: var(--brand-dark);
+  color: var(--text);
+}
+
+[data-theme="dark"] .form-field input,
+[data-theme="dark"] .form-field select {
+  background: var(--card);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .form-field input:focus,
+[data-theme="dark"] .form-field select:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 3px rgba(66, 165, 245, 0.1);
+}

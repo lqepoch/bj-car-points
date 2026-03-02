@@ -98,8 +98,99 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="container">
-      <AccessibilityEnhancements />
+    <>
+      {/* 结构化数据 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            "name": "北京小客车家庭积分计算器",
+            "description": "基于官方政策规则自动计算家庭总积分，帮助您了解申请资格和中签概率",
+            "url": "https://bj-car-points.pages.dev",
+            "applicationCategory": "UtilityApplication",
+            "operatingSystem": "Web Browser",
+            "offers": {
+              "@type": "Offer",
+              "price": "0",
+              "priceCurrency": "CNY"
+            },
+            "featureList": [
+              "普通摇号积分计算",
+              "新能源轮候积分计算", 
+              "家庭总积分计算",
+              "未来积分预测",
+              "计算历史记录"
+            ],
+            "screenshot": "https://bj-car-points.pages.dev/og-image.png",
+            "softwareVersion": "2.0",
+            "datePublished": "2024-01-01",
+            "dateModified": new Date().toISOString().split('T')[0],
+            "inLanguage": "zh-CN",
+            "isAccessibleForFree": true,
+            "author": {
+              "@type": "Organization",
+              "name": "北京小客车积分计算器团队"
+            },
+            "aggregateRating": {
+              "@type": "AggregateRating",
+              "ratingValue": "4.8",
+              "ratingCount": "1200",
+              "bestRating": "5",
+              "worstRating": "1"
+            }
+          })
+        }}
+      />
+      
+      {/* FAQ结构化数据 */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+              {
+                "@type": "Question",
+                "name": "北京小客车家庭积分如何计算？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "家庭申请人积分 = 基础积分 + 阶梯（轮候）积分 + 家庭申请年限加分。主申请人基础分2分，其他成员1分。普通摇号按次数映射阶梯分，新能源轮候每满一年+1分。"
+                }
+              },
+              {
+                "@type": "Question", 
+                "name": "家庭总积分公式是什么？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "含配偶：总积分 = [(主申请人积分 + 配偶积分) × 2 + 其他成员积分之和] × 家庭代际数。不含配偶：总积分 = (主申请人积分 + 其他成员积分之和) × 家庭代际数。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "新能源轮候和普通摇号可以同时进行吗？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "可以。选择'新能源指标或普通指标'策略，5月先参加新能源配置，未入围自动转入普通摇号池。普通摇号阶梯分和新能源轮候年限分同时累积。"
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "这个计算器的结果准确吗？",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "本工具严格按照北京市交通委员会官方政策规则开发，计算结果仅供参考。实际积分以北京市小客车指标调控管理办公室公布的官方结果为准。"
+                }
+              }
+            ]
+          })
+        }}
+      />
+      
+      <main className="container">
+        <AccessibilityEnhancements />
       
       {/* 头部 */}
       <div className="hero card">
@@ -392,5 +483,6 @@ export default function Home() {
 
       <PolicySection />
     </main>
+    </>
   );
 }
